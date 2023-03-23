@@ -60,7 +60,7 @@ int parse_config(struct config_data *configs, char *contents)
     return 1;
 }
 
-int send_config(char *config_data, in_addr_t server_ip, unsigned short server_port)
+int send_msg(char *msg, in_addr_t server_ip, unsigned short server_port)
 {
     // creating a socket
     int sockfd = socket(PF_INET, SOCK_STREAM, PF_UNSPEC);
@@ -80,8 +80,7 @@ int send_config(char *config_data, in_addr_t server_ip, unsigned short server_po
     }
 
     // sending config data to server
-    char *msg = "Hello I am the client";
-    fprintf(stderr, "Message sent: %s\n", msg);
+    fprintf(stderr, "Message sent: %s", msg);
     int len, bytes_sent;
     len = strlen(msg);
     bytes_sent = send(sockfd, msg, len, 0);
@@ -114,17 +113,9 @@ int main(int argc, char *argv[])
          perror("Error when parsing config");
          return -1;
     }
-
-    // printf("%d\n", configs->server_ip);
-    // printf("%d\n", configs->udp_dest_port);
-    // printf("%d\n", configs->tcp_port);
-    // printf("%d\n", configs->udp_payload_size);
-    // printf("%d\n", configs->inter_measurement_time);
-    // printf("%d\n", configs->udp_train_size);
-    // printf("%d\n", configs->ttl);
    
     // pre probing phase
-    if (send_config(config_contents, configs->server_ip, configs->tcp_port) < 0) {
+    if (send_msg(config_contents, configs->server_ip, configs->tcp_port) < 0) {
         return EXIT_FAILURE;
     }
 
