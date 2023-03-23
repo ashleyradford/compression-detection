@@ -5,6 +5,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include "cJSON.h"
+
 void print_usage(char *argv[])
 {
     fprintf(stderr, "Usage: %s port\n", argv[0]);
@@ -36,26 +38,27 @@ int receive_config(unsigned short port)
     }
 
     // accepting incoming client connection
-    struct sockaddr_in client_addr;
-    int client_addr_len = sizeof(client_addr);
+    struct sockaddr_in new_addr;
+    uint new_addr_len = sizeof(new_addr);
     
-    int client_sock = accept(sockfd, (struct sockaddr *) &client_addr, &client_addr_len);
-    if (client_sock < 0) {
+    int new_sock = accept(sockfd, (struct sockaddr *) &new_addr, &new_addr_len);
+    if (new_sock < 0) {
         perror("Error accepting connection");
         return -1;
     }
 
     // communicating with client
-    // TODO ~ error check 
     char buffer[1025];
     memset(&buffer, '\0', 1025);
     int bytes_received;
-    if (bytes_received = recv(sockfd, buffer, 1025, 0) < 0) {
+    if ((bytes_received = recv(new_sock, buffer, 1025, 0)) < 0) {
         perror("Error receiving bytes");
         return -1;
     }
     fprintf(stderr, "Bytes read: %d\n", bytes_received);
-    fprintf(stderr, "Message received: %s\n", buffer);
+    fprintf(stderr, "Message received: %s", buffer);
+
+    return 1;
 }
 
 int main(int argc, char *argv[])
