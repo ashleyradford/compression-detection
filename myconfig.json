@@ -1,0 +1,12 @@
+{
+    "server_ip": "192.168.64.9",
+    "udp_source_port": "9876",
+    "udp_dest_port": "8765",
+    "tcp_head_dest": "",
+    "tcp_tail_dest": "",
+    "tcp_port": "8787",
+    "udp_payload_size": "1000",
+    "inter_measurement_time": "15",
+    "udp_train_size": "6000",
+    "ttl": "225"
+}
