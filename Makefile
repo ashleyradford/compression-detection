@@ -1,24 +1,30 @@
 CC = gcc
 CFLAGS = -Wall
-TARGET = bin
-INTER = obj
-OBJC = $(INTER)/compdetect_client.o $(INTER)/cJSON.o
-OBJS = $(INTER)/compdetect_server.o $(INTER)/cJSON.o
+target = bin
+inter = obj
+
+OBJC = $(inter)/compdetect_client.o $(inter)/cJSON.o
+OBJS = $(inter)/compdetect_server.o $(inter)/cJSON.o
 
 all: client server
 
-client: $(OBJC)
-	$(CC) $(CFLAGS) $(OBJC) -o $(TARGET)/compdetect_client
-server: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET)/compdetect_server
+client: $(OBJC) | $(target)
+	$(CC) $(CFLAGS) $(OBJC) -o $(target)/compdetect_client
+server: $(OBJS) | $(target)
+	$(CC) $(CFLAGS) $(OBJS) -o $(target)/compdetect_server
 
 # object files
-$(INTER)/compdetect_client.o: compdetect_client.c cJSON.h
-	$(CC) $(CFLAGS) -c compdetect_client.c -o $(INTER)/compdetect_client.o
-$(INTER)/compdetect_server.o: compdetect_server.c cJSON.h
-	$(CC) $(CFLAGS) -c compdetect_server.c -o $(INTER)/compdetect_server.o
-$(INTER)/cJSON.o: cJSON.c
-	$(CC) $(CFLAGS) -c cJSON.c -o $(INTER)/cJSON.o
+$(inter)/compdetect_client.o: compdetect_client.c cJSON.h | $(inter)
+	$(CC) $(CFLAGS) -c compdetect_client.c -o $(inter)/compdetect_client.o
+$(inter)/compdetect_server.o: compdetect_server.c cJSON.h | $(inter)
+	$(CC) $(CFLAGS) -c compdetect_server.c -o $(inter)/compdetect_server.o
+$(inter)/cJSON.o: cJSON.c | $(inter)
+	$(CC) $(CFLAGS) -c cJSON.c -o $(inter)/cJSON.o
+
+$(target):
+	mkdir $@
+$(inter):
+	mkdir $@
 
 clean:
-	rm build/* ||:
+	rm obj/* bin/* ||:
