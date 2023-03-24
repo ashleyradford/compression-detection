@@ -20,7 +20,8 @@ void parse_config(struct server_config *configs, char *contents)
     configs->udp_payload_size = atoi(cJSON_GetObjectItem(root, "udp_payload_size")->valuestring);
 }
 
-struct server_config* pre_probing(unsigned short listen_port) {
+struct server_config* pre_probing(unsigned short listen_port)
+{
     // bind port and accept client connection
     int sock;
     if ((sock = create_socket()) < 0) {
@@ -38,7 +39,7 @@ struct server_config* pre_probing(unsigned short listen_port) {
 
     // receive message
     char *config_contents;
-    if ((config_contents = receive_msg(new_sock)) == NULL) {
+    if ((config_contents = receive_stream(new_sock)) == NULL) {
         return NULL;
     }
 
@@ -54,7 +55,8 @@ struct server_config* pre_probing(unsigned short listen_port) {
     return configs;
 }
 
-int post_probing(unsigned short listen_port) {
+int post_probing(unsigned short listen_port)
+{
     char *msg = "It's me, hi im the problem\n";
     int sock;
     if ((sock = create_socket()) < 0) {
@@ -73,7 +75,7 @@ int post_probing(unsigned short listen_port) {
         return -1;
     }
 
-    if (send_msg(new_sock, msg) < 0) {
+    if (send_stream(new_sock, msg) < 0) {
         return -1;
     }
 

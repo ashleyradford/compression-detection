@@ -58,7 +58,8 @@ void parse_config(struct client_config *configs, char *contents)
     configs->ttl = atoi(cJSON_GetObjectItem(root, "ttl")->valuestring);
 }
 
-struct client_config* pre_probing(char *filename) {
+struct client_config* pre_probing(char *filename)
+{
     struct stat buf;
     if (stat(filename, &buf) < 0) {
         perror("Error retrieving file info");
@@ -82,7 +83,7 @@ struct client_config* pre_probing(char *filename) {
         return NULL;
     }
 
-    if (send_msg(sockfd, config_contents) < 0) {
+    if (send_stream(sockfd, config_contents) < 0) {
         return NULL;
     }
     
@@ -93,7 +94,8 @@ struct client_config* pre_probing(char *filename) {
     return configs;
 }
 
-int post_probing(struct client_config *configs) {
+int post_probing(struct client_config *configs)
+{
     int sockfd;
     if ((sockfd = create_socket()) < 0) {
         return -1;
@@ -104,7 +106,7 @@ int post_probing(struct client_config *configs) {
     }
     
     char *msg;
-    if ((msg = receive_msg(sockfd)) == NULL) {
+    if ((msg = receive_stream(sockfd)) == NULL) {
         return -1;
     }
     printf("Received msg: %s", msg);

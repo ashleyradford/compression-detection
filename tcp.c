@@ -88,7 +88,7 @@ int accept_connection(int sockfd)
     return new_sock;
 }
 
-int send_msg(int sockfd, char *msg)
+int send_stream(int sockfd, char *msg)
 {
     int len, bytes_sent;
     len = strlen(msg);
@@ -100,7 +100,7 @@ int send_msg(int sockfd, char *msg)
     return 1;
 }
 
-char* receive_msg(int sockfd)
+char* receive_stream(int sockfd)
 {
     char *buf = malloc(RECV_BUFFER);
     memset(buf, '\0', RECV_BUFFER);
