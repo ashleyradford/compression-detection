@@ -64,7 +64,7 @@ struct client_config* pre_probing(char *filename)
     if (stat(filename, &buf) < 0) {
         perror("Error retrieving file info");
         return NULL;
-    };
+    }
 
     // read in config file contents
     char *config_contents = read_file(filename,  buf.st_size);
@@ -75,7 +75,7 @@ struct client_config* pre_probing(char *filename)
 
     // establish connection and send config contents
     int sockfd;
-    if ((sockfd = create_socket()) < 0) {
+    if ((sockfd = create_tcp_socket()) < 0) {
         return NULL;
     }
 
@@ -94,10 +94,23 @@ struct client_config* pre_probing(char *filename)
     return configs;
 }
 
+int probing(unsigned short listen_port)
+{
+    // use a short int
+    // incremenet using bit wise op
+    // move most sig and lest sig
+
+    // using clock
+    // get time of day (better one to use)
+
+
+
+}
+
 int post_probing(struct client_config *configs)
 {
     int sockfd;
-    if ((sockfd = create_socket()) < 0) {
+    if ((sockfd = create_tcp_socket()) < 0) {
         return -1;
     }
 
@@ -130,7 +143,7 @@ int main(int argc, char *argv[])
     struct client_config *configs;
     if ((configs = pre_probing(filename)) == NULL) {
         return EXIT_FAILURE;
-    };
+    }
     
     // probing phase
     sleep(5);
@@ -138,7 +151,7 @@ int main(int argc, char *argv[])
     // post probing phase
     if (post_probing(configs) < 0) {
         return EXIT_FAILURE;
-    };
+    }
     
     // free config structure data
     free(configs);
