@@ -1,12 +1,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 
 #include <sys/stat.h>
 #include <arpa/inet.h>
 
 #include "cJSON.h"
 #include "tcp.h"
+#include "udp.h"
 
 struct client_config {
     in_addr_t server_ip;
@@ -58,6 +60,17 @@ void parse_config(struct client_config *configs, char *contents)
     configs->ttl = atoi(cJSON_GetObjectItem(root, "ttl")->valuestring);
 }
 
+char* create_payload(struct client_config *configs)
+{
+    char *payload = malloc(configs->udp_payload_size);
+    if (payload == NULL) {
+        perror("Error mallocing payload");
+        return NULL;
+    }
+    memset(payload, 0, configs->udp_payload_size);
+    return payload;
+}
+
 struct client_config* pre_probing(char *filename)
 {
     struct stat buf;
@@ -94,8 +107,28 @@ struct client_config* pre_probing(char *filename)
     return configs;
 }
 
-int probing(unsigned short listen_port)
+int probing(struct client_config *configs)
 {
+    int sock;
+    if ((sock = create_udp_socket()) < 0) {
+        return -1;
+    }
+
+    struct sockaddr_in *my_addr; 
+    if ((my_addr = get_addr_in(configs->udp_dest_port)) == NULL) {
+        return -1;
+    }
+
+    char* payload = create_payload(configs);
+    if (payload == NULL) {
+        return -1;
+    }
+    printf("%s", payload);
+
+    // if (send_packets(sock, *payload, my_addr) < 0) {
+    //     return NULL;
+    // }
+    
     // use a short int
     // incremenet using bit wise op
     // move most sig and lest sig
@@ -147,6 +180,7 @@ int main(int argc, char *argv[])
     
     // probing phase
     sleep(5);
+    probing(configs);
 
     // post probing phase
     if (post_probing(configs) < 0) {
