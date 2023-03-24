@@ -55,21 +55,23 @@ int bind_port(int sockfd, struct sockaddr_in *addr_in)
     return 1;
 }
 
-int send_packets(int sockfd, char *payload, struct sockaddr_in *addr_in)
+int send_packet(int sockfd, char *payload, struct sockaddr_in *addr_in)
 {
     int payload_len, to_len, bytes_sent;
     payload_len = strlen(payload);
     to_len = sizeof(struct sockaddr);
     if ((bytes_sent = sendto(sockfd, payload, payload_len, 0,
                         (struct sockaddr *) addr_in, to_len)) < 0) {
-        perror("Error sending message");
+        perror("Error sending packet");
         return -1;
+    } else {
+        printf("Packet sent");
     }
     
     return 1;
 }
 
-char* receive_packets(int sockfd, struct sockaddr_in *addr_in)
+char* receive_packet(int sockfd, struct sockaddr_in *addr_in)
 {
     char *buf = malloc(RECV_BUFFER);
     if (buf == NULL) {
@@ -82,7 +84,7 @@ char* receive_packets(int sockfd, struct sockaddr_in *addr_in)
     uint from_len = sizeof(struct sockaddr);
     if ((bytes_received = recvfrom(sockfd, buf, RECV_BUFFER, 0,
                             (struct sockaddr *) addr_in, &from_len)) < 0) {
-        perror("Error receiving bytes");
+        perror("Error receiving packet");
         return NULL;
     }
 

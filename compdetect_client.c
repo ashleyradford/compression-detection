@@ -123,11 +123,11 @@ int probing(struct client_config *configs)
     if (payload == NULL) {
         return -1;
     }
-    printf("%s", payload);
+    printf("Payload: %s\n", payload);
 
-    // if (send_packets(sock, *payload, my_addr) < 0) {
-    //     return NULL;
-    // }
+    if (send_packet(sock, *payload, my_addr) < 0) {
+        return NULL;
+    }
     
     // use a short int
     // incremenet using bit wise op
@@ -135,7 +135,6 @@ int probing(struct client_config *configs)
 
     // using clock
     // get time of day (better one to use)
-
 
     return 1;
 }
@@ -183,9 +182,9 @@ int main(int argc, char *argv[])
     probing(configs);
 
     // post probing phase
-    if (post_probing(configs) < 0) {
-        return EXIT_FAILURE;
-    }
+    // if (post_probing(configs) < 0) {
+    //     return EXIT_FAILURE;
+    // }
     
     // free config structure data
     free(configs);
