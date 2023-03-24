@@ -9,22 +9,23 @@
 #define RECV_BUFFER 1024
 
 int create_socket() {
-    int sockfd = socket(PF_INET, SOCK_STREAM, PF_UNSPEC);
+    int sockfd;
+    if ((sockfd = socket(PF_INET, SOCK_STREAM, PF_UNSPEC)) < 0) {
+        perror("Error creating port");
+        return -1;
+    };
 
     // for the address already in use error
     int yes = 1;
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1) {
-        perror("Cannot resuse port");
+        perror("Cannot reuse port");
         return -1;
     }
 
     return sockfd;
 }
 
-int establish_connection(in_addr_t server_ip, unsigned short server_port) {
-    // creating a socket
-    int sockfd = socket(PF_INET, SOCK_STREAM, PF_UNSPEC);
-
+int establish_connection(int sockfd, in_addr_t server_ip, unsigned short server_port) {
     // setting up addr struct
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
@@ -54,7 +55,7 @@ int bind_and_listen(int sockfd, unsigned short port)
     my_addr.sin_addr.s_addr = INADDR_ANY; // binds local IP address
     my_addr.sin_port = htons(port);
 
-    // binding port to socket
+    // binding socket to address
     if (bind(sockfd, (struct sockaddr *) &my_addr, sizeof(my_addr)) < 0) {
         perror("Error binding socket to address");
         return -1;
@@ -73,7 +74,6 @@ int bind_and_listen(int sockfd, unsigned short port)
 
 int accept_connection(int sockfd)
 {
-    // accepting incoming client connection
     struct sockaddr_in new_addr;
     uint new_addr_len = sizeof(new_addr);
 
