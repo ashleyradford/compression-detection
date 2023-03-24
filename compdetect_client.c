@@ -1,14 +1,14 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <unistd.h>
 
 #include <sys/stat.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
 
 #include "cJSON.h"
+#include "tcp.h"
 
-struct config_data {
+struct client_config {
     in_addr_t server_ip;
     unsigned short udp_dest_port;
     unsigned short tcp_port;
@@ -18,7 +18,7 @@ struct config_data {
     int ttl;
 };
 
-char* read_config(char *filename, int size)
+char* read_file(char *filename, int size)
 {
     // malloc buffer size
     char *buf = malloc(size);
@@ -30,14 +30,14 @@ char* read_config(char *filename, int size)
     // open file
     FILE *fp;
     if ((fp = fopen(filename, "r")) < 0) {
-        perror("Error when opening config file");
+        perror("Error when opening file");
         free(buf);
         return NULL;
     }
 
-    // read config
+    // read file
     if (fread(buf, size, 1, fp) < 0) {
-        perror("Error when reading config");
+        perror("Error when reading file");
         free(buf);
         return NULL;
     }
@@ -45,7 +45,7 @@ char* read_config(char *filename, int size)
     return buf;
 }
 
-int parse_config(struct config_data *configs, char *contents)
+void parse_config(struct client_config *configs, char *contents)
 {
     // parse json
     cJSON *root = cJSON_Parse(contents);
@@ -56,36 +56,6 @@ int parse_config(struct config_data *configs, char *contents)
     configs->inter_measurement_time = atoi(cJSON_GetObjectItem(root, "inter_measurement_time")->valuestring);
     configs->udp_train_size = atoi(cJSON_GetObjectItem(root, "udp_train_size")->valuestring);
     configs->ttl = atoi(cJSON_GetObjectItem(root, "ttl")->valuestring);
-    
-    return 1;
-}
-
-int send_msg(char *msg, in_addr_t server_ip, unsigned short server_port)
-{
-    // creating a socket
-    int sockfd = socket(PF_INET, SOCK_STREAM, PF_UNSPEC);
-
-    // setting up addr struct
-    struct sockaddr_in server_addr;
-    memset(&server_addr, 0, sizeof(server_addr));
-
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = server_ip;
-    server_addr.sin_port = htons(server_port);
-
-    // connecting to server
-    if (connect(sockfd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
-        perror("Error connecting to server");
-        return 1;
-    }
-
-    // sending config data to server
-    fprintf(stderr, "Message sent: %s", msg);
-    int len, bytes_sent;
-    len = strlen(msg);
-    bytes_sent = send(sockfd, msg, len, 0);
-
-    return 1;
 }
 
 int main(int argc, char *argv[])
@@ -96,34 +66,58 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    // get file size
+    // --- PRE PROBING PHASE ---
     char *filename = argv[1];
     struct stat buf;
     if (stat(filename, &buf) < 0) {
         perror("Error retrieving file info");
-        return 1;
+        return EXIT_FAILURE;
     };
 
     // read in config file contents
-    char *config_contents = read_config(argv[1],  buf.st_size);
+    char *config_contents = read_file(argv[1],  buf.st_size);
 
     // parse config file
-    struct config_data *configs = malloc(sizeof(struct config_data));
-    if (parse_config(configs, config_contents) < 0) {
-         perror("Error when parsing config");
-         return -1;
-    }
-   
-    // pre probing phase
-    if (send_msg(config_contents, configs->server_ip, configs->tcp_port) < 0) {
+    struct client_config *configs = malloc(sizeof(struct client_config));
+    parse_config(configs, config_contents);
+
+    // establish connection and send config contents
+    int sockfd;
+    if ((sockfd = create_socket()) < 0) {
         return EXIT_FAILURE;
     }
 
-    // probing phase
+    if ((sockfd = establish_connection(sockfd, configs->server_ip, configs->tcp_port)) < 0) {
+        return EXIT_FAILURE;
+    }
 
+    if (send_msg(sockfd, config_contents) < 0) {
+        return EXIT_FAILURE;
+    }
+    
+    close(sockfd);
+    printf("Config contents sent, TCP connection closed.\n");
 
-    // post probing phase
+    // --- PROBING PHASE ---
+    sleep(5);
 
+    // --- POST PROBING PHASE ---
+    if ((sockfd = create_socket()) < 0) {
+        return EXIT_FAILURE;
+    }
+
+    if ((sockfd = establish_connection(sockfd, configs->server_ip, configs->tcp_port)) < 0) {
+        return EXIT_FAILURE;
+    }
+    
+    char *msg;
+    if ((msg = receive_msg(sockfd)) == NULL) {
+        return EXIT_FAILURE;
+    }
+
+    printf("Received msg: %s", msg);
+
+    close(sockfd);
 
     // free memory
     free(config_contents);
