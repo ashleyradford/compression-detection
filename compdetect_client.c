@@ -58,24 +58,15 @@ void parse_config(struct client_config *configs, char *contents)
     configs->ttl = atoi(cJSON_GetObjectItem(root, "ttl")->valuestring);
 }
 
-int main(int argc, char *argv[])
-{
-    // check that config file is provided
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s config_file.json\n", argv[0]);
-        return EXIT_FAILURE;
-    }
-
-    // --- PRE PROBING PHASE ---
-    char *filename = argv[1];
+struct client_config* pre_probing(char *filename) {
     struct stat buf;
     if (stat(filename, &buf) < 0) {
         perror("Error retrieving file info");
-        return EXIT_FAILURE;
+        return NULL;
     };
 
     // read in config file contents
-    char *config_contents = read_file(argv[1],  buf.st_size);
+    char *config_contents = read_file(filename,  buf.st_size);
 
     // parse config file
     struct client_config *configs = malloc(sizeof(struct client_config));
@@ -84,43 +75,70 @@ int main(int argc, char *argv[])
     // establish connection and send config contents
     int sockfd;
     if ((sockfd = create_socket()) < 0) {
-        return EXIT_FAILURE;
+        return NULL;
     }
 
     if ((sockfd = establish_connection(sockfd, configs->server_ip, configs->tcp_port)) < 0) {
-        return EXIT_FAILURE;
+        return NULL;
     }
 
     if (send_msg(sockfd, config_contents) < 0) {
-        return EXIT_FAILURE;
+        return NULL;
     }
     
     close(sockfd);
     printf("Config contents sent, TCP connection closed.\n");
+    free(config_contents);
 
-    // --- PROBING PHASE ---
-    sleep(5);
+    return configs;
+}
 
-    // --- POST PROBING PHASE ---
+int post_probing(struct client_config *configs) {
+    int sockfd;
     if ((sockfd = create_socket()) < 0) {
-        return EXIT_FAILURE;
+        return -1;
     }
 
     if ((sockfd = establish_connection(sockfd, configs->server_ip, configs->tcp_port)) < 0) {
-        return EXIT_FAILURE;
+        return -1;
     }
     
     char *msg;
     if ((msg = receive_msg(sockfd)) == NULL) {
-        return EXIT_FAILURE;
+        return -1;
     }
-
     printf("Received msg: %s", msg);
 
     close(sockfd);
 
-    // free memory
-    free(config_contents);
+    return 1;
+}
+
+int main(int argc, char *argv[])
+{
+    // check that config file is provided
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s config_file.json\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    char *filename = argv[1];
+
+    // pre probing phase
+    struct client_config *configs;
+    if ((configs = pre_probing(filename)) == NULL) {
+        return EXIT_FAILURE;
+    };
+    
+    // probing phase
+    sleep(5);
+
+    // post probing phase
+    if (post_probing(configs) < 0) {
+        return EXIT_FAILURE;
+    };
+    
+    // free config structure data
     free(configs);
 
     return EXIT_SUCCESS;
