@@ -4,6 +4,7 @@
 
 #include "cJSON.h"
 #include "tcp.h"
+#include "udp.h"
 
 #define RECV_BUFFER 1024
 
@@ -24,7 +25,7 @@ struct server_config* pre_probing(unsigned short listen_port)
 {
     // bind port and accept client connection
     int sock;
-    if ((sock = create_socket()) < 0) {
+    if ((sock = create_tcp_socket()) < 0) {
         return NULL;
     }
 
@@ -55,23 +56,44 @@ struct server_config* pre_probing(unsigned short listen_port)
     return configs;
 }
 
-int post_probing(unsigned short listen_port)
+char* probing(unsigned short port)
 {
-    char *msg = "It's me, hi im the problem\n";
     int sock;
-    if ((sock = create_socket()) < 0) {
-        perror("Error creating port");
+    if ((sock = create_udp_socket()) < 0) {
+        return NULL;
+    }
+
+    struct sockaddr_in *my_addr; 
+    if ((my_addr = get_addr_in(int port)) == NULL) {
+        return NULL;
+    }
+
+    if (bind(sock, my_addr) < 0) {
+        return NULL;
+    }
+
+    if (receive_packets() == NULL) {
+        return NULL;
+    }
+
+    // calculations ~ shorter than inter time
+
+    free(my_addr);
+}
+
+int post_probing(unsigned short listen_port, char *msg)
+{
+    int sock;
+    if ((sock = create_tcp_socket()) < 0) {
         return -1;
     }
 
     if (bind_and_listen(sock, listen_port) < 0) {
-        perror("Error binding port");
         return -1;
     }
 
     int new_sock;
     if ((new_sock = accept_connection(sock)) < 0) {
-        perror("Error accepting connection");
         return -1;
     }
 
@@ -100,21 +122,19 @@ int main(int argc, char *argv[])
     struct server_config *configs;
     if ((configs = pre_probing(listen_port)) == NULL) {
         return EXIT_FAILURE;
-    };
+    }
 
     // probing phase
-    // use a short int
-    // incremenet using bit wise op
-    // move most sig and lest sig
-
-    // using clock
-    // get time of day (better one to use)
+    char *results;
+    if ((results = probing(configs->listen_port)) == NULL) {
+        return EXIT_FAILURE;
+    }
     sleep(4);
 
     // post probing phase
-    if (post_probing(listen_port) < 0) {
+    if (post_probing(listen_port, results) < 0) {
         return EXIT_FAILURE;
-    };
+    }
 
     // free config structure data
     free(configs);

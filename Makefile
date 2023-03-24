@@ -3,8 +3,8 @@ CFLAGS = -Wall
 target = bin
 inter = obj
 
-OBJC = $(inter)/compdetect_client.o $(inter)/cJSON.o $(inter)/tcp.o
-OBJS = $(inter)/compdetect_server.o $(inter)/cJSON.o $(inter)/tcp.o
+OBJC = $(inter)/compdetect_client.o $(inter)/cJSON.o $(inter)/tcp.o $(inter)/udp.o
+OBJS = $(inter)/compdetect_server.o $(inter)/cJSON.o $(inter)/tcp.o $(inter)/udp.o
 
 all: client server
 
@@ -22,6 +22,8 @@ $(inter)/cJSON.o: cJSON.c | $(inter)
 	$(CC) $(CFLAGS) -c cJSON.c -o $(inter)/cJSON.o
 $(inter)/tcp.o: tcp.c | $(inter)
 	$(CC) $(CFLAGS) -c tcp.c -o $(inter)/tcp.o
+$(inter)/udp.o: udp.c | $(inter)
+	$(CC) $(CFLAGS) -c udp.c -o $(inter)/udp.o
 
 $(target):
 	mkdir $@

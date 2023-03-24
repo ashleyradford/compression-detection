@@ -8,12 +8,13 @@
 
 #define RECV_BUFFER 1024
 
-int create_socket() {
+int create_tcp_socket()
+{
     int sockfd;
     if ((sockfd = socket(PF_INET, SOCK_STREAM, PF_UNSPEC)) < 0) {
-        perror("Error creating port");
+        perror("Error creating tcp port");
         return -1;
-    };
+    }
 
     // for the address already in use error
     int yes = 1;
@@ -25,7 +26,8 @@ int create_socket() {
     return sockfd;
 }
 
-int establish_connection(int sockfd, in_addr_t server_ip, unsigned short server_port) {
+int establish_connection(int sockfd, in_addr_t server_ip, unsigned short server_port)
+{
     // setting up addr struct
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
@@ -66,7 +68,7 @@ int bind_and_listen(int sockfd, unsigned short port)
         perror("Error listening for client");
         return -1;
     } else {
-        printf("Listening for connections...\n");
+        printf("Listening for connections on port %d\n", my_addr.sin_port);
     }
 
     return 1;
@@ -79,7 +81,7 @@ int accept_connection(int sockfd)
 
     int new_sock = accept(sockfd, (struct sockaddr *) &new_addr, &new_addr_len);
     if (new_sock < 0) {
-        perror("Error accepting connection");
+        perror("Error accepting connections");
         return -1;
     } else {
         printf("Connection accepted.\n");
@@ -103,6 +105,10 @@ int send_stream(int sockfd, char *msg)
 char* receive_stream(int sockfd)
 {
     char *buf = malloc(RECV_BUFFER);
+    if (buf == NULL) {
+        perror("Error mallocing buf");
+        return NULL;
+    }
     memset(buf, '\0', RECV_BUFFER);
 
     int bytes_received;
