@@ -4,23 +4,9 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define RECV_BUFFER 1024
-
-struct server_config {
-    unsigned short udp_dest_port;
-    int udp_payload_size;
-};
-
-struct client_config {
-    in_addr_t server_ip;
-    unsigned short udp_dest_port;
-    unsigned short tcp_port;
-    int udp_payload_size;
-    int inter_measurement_time;
-    int udp_train_size;
-    int ttl;
-};
 
 int create_socket() {
     int sockfd = socket(PF_INET, SOCK_STREAM, PF_UNSPEC);
@@ -102,6 +88,18 @@ int accept_connection(int sockfd)
     return new_sock;
 }
 
+int send_msg(int sockfd, char *msg)
+{
+    int len, bytes_sent;
+    len = strlen(msg);
+    if ((bytes_sent = send(sockfd, msg, len, 0)) < 0) {
+        perror("Error sending message");
+        return -1;
+    }
+    
+    return 1;
+}
+
 char* receive_msg(int sockfd)
 {
     char *buf = malloc(RECV_BUFFER);
@@ -114,16 +112,4 @@ char* receive_msg(int sockfd)
     }
 
     return buf;
-}
-
-int send_msg(int sockfd, char *msg)
-{
-    int len, bytes_sent;
-    len = strlen(msg);
-    if ((bytes_sent = send(sockfd, msg, len, 0)) < 0) {
-        perror("Error sending message");
-        return -1;
-    }
-    
-    return 1;
 }
