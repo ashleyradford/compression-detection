@@ -64,21 +64,23 @@ char* probing(unsigned short port)
     }
 
     struct sockaddr_in *my_addr; 
-    if ((my_addr = get_addr_in(int port)) == NULL) {
+    if ((my_addr = get_addr_in(port)) == NULL) {
         return NULL;
     }
 
-    if (bind(sock, my_addr) < 0) {
+    if (bind_port(sock, my_addr) < 0) {
         return NULL;
     }
 
-    if (receive_packets() == NULL) {
+    if (receive_packets(sock, my_addr) == NULL) {
         return NULL;
     }
 
     // calculations ~ shorter than inter time
 
     free(my_addr);
+
+    return "Hellooo";
 }
 
 int post_probing(unsigned short listen_port, char *msg)
@@ -126,7 +128,7 @@ int main(int argc, char *argv[])
 
     // probing phase
     char *results;
-    if ((results = probing(configs->listen_port)) == NULL) {
+    if ((results = probing(configs->udp_dest_port)) == NULL) {
         return EXIT_FAILURE;
     }
     sleep(4);

@@ -104,7 +104,7 @@ int probing(unsigned short listen_port)
     // get time of day (better one to use)
 
 
-
+    return 1;
 }
 
 int post_probing(struct client_config *configs)
