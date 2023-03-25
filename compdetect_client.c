@@ -100,7 +100,10 @@ struct client_config* pre_probing(char *filename)
         return NULL;
     }
     
-    close(sockfd);
+    if (close(sockfd) < 0) {
+        perror("Error closing socket");
+        return NULL;
+    }
     printf("Config contents sent, TCP connection closed.\n");
     free(config_contents);
 
@@ -115,7 +118,7 @@ int probing(struct client_config *configs)
     }
 
     struct sockaddr_in *my_addr; 
-    if ((my_addr = get_addr_in(configs->udp_dest_port)) == NULL) {
+    if ((my_addr = get_addr_in(configs->server_ip, configs->udp_dest_port)) == NULL) {
         return -1;
     }
 
@@ -123,18 +126,23 @@ int probing(struct client_config *configs)
     if (payload == NULL) {
         return -1;
     }
-    printf("Payload: %s\n", payload);
 
-    if (send_packet(sock, payload, my_addr) < 0) {
-        return -1;
+    for (int i = 0; i < 20; i++) {
+        if (send_packet(sock, payload, configs->udp_payload_size, my_addr) < 0) {
+            return -1;
+        }
     }
-    
+
     // use a short int
     // incremenet using bit wise op
     // move most sig and lest sig
+    // timeout 8s a lot, maybe 5?
 
     // using clock
     // get time of day (better one to use)
+
+    // and, or, shitfting
+    // 255 is least sig, unsigned short
 
     return 1;
 }
@@ -156,7 +164,10 @@ int post_probing(struct client_config *configs)
     }
     printf("Received msg: %s", msg);
 
-    close(sockfd);
+    if (close(sockfd) < 0) {
+        perror("Error closing socket");
+        return -1;
+    }
 
     return 1;
 }
@@ -178,7 +189,7 @@ int main(int argc, char *argv[])
     }
     
     // probing phase
-    sleep(5);
+    usleep(10);
     probing(configs);
 
     // post probing phase
