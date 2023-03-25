@@ -125,8 +125,8 @@ int probing(struct client_config *configs)
     }
     printf("Payload: %s\n", payload);
 
-    if (send_packet(sock, *payload, my_addr) < 0) {
-        return NULL;
+    if (send_packet(sock, payload, my_addr) < 0) {
+        return -1;
     }
     
     // use a short int

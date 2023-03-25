@@ -134,9 +134,9 @@ int main(int argc, char *argv[])
     sleep(4);
 
     // post probing phase
-    if (post_probing(listen_port, results) < 0) {
-        return EXIT_FAILURE;
-    }
+    // if (post_probing(listen_port, results) < 0) {
+    //     return EXIT_FAILURE;
+    // }
 
     // free config structure data
     free(configs);

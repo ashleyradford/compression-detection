@@ -49,7 +49,7 @@ int bind_port(int sockfd, struct sockaddr_in *addr_in)
         perror("Error binding socket to address");
         return -1;
     } else {
-        printf("Binded to port %d\n", addr_in->sin_port);
+        printf("Binded to port %d\n", ntohs(addr_in->sin_port));
     }
 
     return 1;

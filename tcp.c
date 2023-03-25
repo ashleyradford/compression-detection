@@ -68,7 +68,7 @@ int bind_and_listen(int sockfd, unsigned short port)
         perror("Error listening for client");
         return -1;
     } else {
-        printf("Listening for connections on port %d\n", my_addr.sin_port);
+        printf("Listening for connections on port %d\n", ntohs(my_addr.sin_port));
     }
 
     return 1;
