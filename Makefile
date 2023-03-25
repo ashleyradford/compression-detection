@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall
+CFLAGS = -Wall -g
 target = bin
 inter = obj
 
@@ -14,9 +14,9 @@ server: $(OBJS) | $(target)
 	$(CC) $(CFLAGS) $(OBJS) -o $(target)/compdetect_server
 
 # object files
-$(inter)/compdetect_client.o: compdetect_client.c cJSON.h tcp.h| $(inter)
+$(inter)/compdetect_client.o: compdetect_client.c cJSON.h tcp.h udp.h| $(inter)
 	$(CC) $(CFLAGS) -c compdetect_client.c -o $(inter)/compdetect_client.o
-$(inter)/compdetect_server.o: compdetect_server.c cJSON.h tcp.h| $(inter)
+$(inter)/compdetect_server.o: compdetect_server.c cJSON.h tcp.h udp.h| $(inter)
 	$(CC) $(CFLAGS) -c compdetect_server.c -o $(inter)/compdetect_server.o
 $(inter)/cJSON.o: cJSON.c | $(inter)
 	$(CC) $(CFLAGS) -c cJSON.c -o $(inter)/cJSON.o
