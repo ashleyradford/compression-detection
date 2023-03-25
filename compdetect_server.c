@@ -67,7 +67,12 @@ struct server_config* pre_probing(unsigned short listen_port)
 char* probing(struct server_config *configs)
 {
     int sock;
-    if ((sock = create_udp_socket(configs->inter_measurement_time / TIMEOUT_MULTI)) < 0) {
+    if ((sock = create_udp_socket()) < 0) {
+        return NULL;
+    }
+
+    // add timeout
+    if (add_timeout(sock, configs->inter_measurement_time / TIMEOUT_MULTI) < 0) {
         return NULL;
     }
 

@@ -8,7 +8,7 @@
 
 #define RECV_BUFFER 1024
 
-int create_udp_socket(int wait_time)
+int create_udp_socket()
 {
     int sockfd;
     if ((sockfd = socket(PF_INET, SOCK_DGRAM, PF_UNSPEC)) < 0) {
@@ -23,15 +23,22 @@ int create_udp_socket(int wait_time)
         return -1;
     }
 
-    // set udp timout
+    return sockfd;
+}
+
+int add_timeout(int sockfd, int wait_time) {
     struct timeval timeout;
     timeout.tv_sec = wait_time;
     timeout.tv_usec = 0;
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout) == -1) {
-        perror("Cannot reuse port");
+        perror("Cannot add receive timout");
         return -1;
     }
 
+    return sockfd;
+}
+
+int set_df(int sockfd) {
     return sockfd;
 }
 
