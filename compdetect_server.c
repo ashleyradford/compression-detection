@@ -72,7 +72,7 @@ char* probing(unsigned short port)
         return NULL;
     }
 
-    if (receive_packets(sock, my_addr) == NULL) {
+    if (receive_packet(sock, my_addr) == NULL) {
         return NULL;
     }
 
