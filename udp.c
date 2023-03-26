@@ -38,7 +38,13 @@ int add_timeout(int sockfd, int wait_time) {
     return sockfd;
 }
 
-int set_df(int sockfd) {
+int set_df_bit(int sockfd) {
+    int df = IP_PMTUDISC_DO; // sets DF bit
+    if (setsockopt(sockfd, SOL_SOCKET, IP_MTU_DISCOVER, &df, sizeof df) == -1) {
+        perror("Cannot set MTU discovery");
+        return -1;
+    }
+
     return sockfd;
 }
 
@@ -65,9 +71,8 @@ int bind_port(int sockfd, struct sockaddr_in *addr_in)
     if (bind(sockfd, (struct sockaddr *) addr_in, sizeof(struct sockaddr_in)) < 0) {
         perror("Error binding socket to address");
         return -1;
-    } else {
-        printf("Binded to port %d for incoming UDP packets.\n", ntohs(addr_in->sin_port));
     }
+    printf("Binded to port %d for incoming UDP packets.\n", ntohs(addr_in->sin_port));
 
     return 1;
 }

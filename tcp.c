@@ -40,9 +40,8 @@ int establish_connection(int sockfd, in_addr_t server_ip, unsigned short server_
     if (connect(sockfd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
         perror("Error connecting to server");
         return -1;
-    } else {
-        printf("Connected to server.\n");
     }
+    printf("Connected to server.\n");
 
     return sockfd;
 }
@@ -67,9 +66,8 @@ int bind_and_listen(int sockfd, unsigned short port)
     if (listen(sockfd, 5) < 0) { 
         perror("Error listening for client");
         return -1;
-    } else {
-        printf("Listening for connections on port %d\n", ntohs(my_addr.sin_port));
     }
+    printf("Listening for connections on port %d\n", ntohs(my_addr.sin_port));
 
     return 1;
 }
@@ -83,9 +81,8 @@ int accept_connection(int sockfd)
     if (new_sock < 0) {
         perror("Error accepting connections");
         return -1;
-    } else {
-        printf("Connection accepted.\n");
     }
+    printf("Connection accepted.\n");
 
     return new_sock;
 }
