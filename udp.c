@@ -14,14 +14,7 @@ int create_udp_socket()
 {
     int sockfd;
     if ((sockfd = socket(PF_INET, SOCK_DGRAM, PF_UNSPEC)) < 0) {
-        perror("Error creating port");
-        return -1;
-    }
-
-    // for the address already in use error
-    int yes = 1;
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1) {
-        perror("Cannot reuse port");
+        perror("Error creating udp socket");
         return -1;
     }
 

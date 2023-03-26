@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -g -D DEBUG=0
+CFLAGS = -Wall -g -D DEBUG=1
 target = bin
 inter = obj
 

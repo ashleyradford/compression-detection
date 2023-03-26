@@ -14,7 +14,7 @@ int create_tcp_socket()
 {
     int sockfd;
     if ((sockfd = socket(PF_INET, SOCK_STREAM, PF_UNSPEC)) < 0) {
-        perror("Error creating tcp port");
+        perror("Error creating tcp socket");
         return -1;
     }
 
