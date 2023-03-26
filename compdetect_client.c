@@ -12,12 +12,13 @@
 
 struct client_config {
     in_addr_t server_ip;
-    unsigned short udp_dest_port;
-    unsigned short tcp_port;
+    uint16_t udp_dest_port;
+    uint16_t tcp_port;
     int udp_payload_size;
     int inter_measurement_time;
-    int udp_train_size;
+    uint16_t udp_train_size;
     int ttl;
+    int timeout;
 };
 
 char* read_file(char *filename, int size)
@@ -58,16 +59,26 @@ void parse_config(struct client_config *configs, char *contents)
     configs->inter_measurement_time = atoi(cJSON_GetObjectItem(root, "inter_measurement_time")->valuestring);
     configs->udp_train_size = atoi(cJSON_GetObjectItem(root, "udp_train_size")->valuestring);
     configs->ttl = atoi(cJSON_GetObjectItem(root, "ttl")->valuestring);
+    configs->timeout = atoi(cJSON_GetObjectItem(root, "timeout")->valuestring);
 }
 
-char* create_payload(struct client_config *configs)
+char* create_low_entropy_payload(int payload_size, uint16_t i)
 {
-    char *payload = malloc(configs->udp_payload_size);
+    char *payload = malloc(payload_size);
     if (payload == NULL) {
         perror("Error mallocing payload");
         return NULL;
     }
-    memset(payload, 0, configs->udp_payload_size);
+    memset(payload, 0, payload_size);
+    return payload;
+}
+
+char* create_high_entropy_payload(int payload_size, uint16_t i)
+{
+    char *payload = read_file("myrandom", payload_size);
+    if (payload == NULL) {
+        return NULL;
+    }
     return payload;
 }
 
@@ -81,12 +92,15 @@ struct client_config* pre_probing(char *filename)
 
     // read in config file contents
     char *config_contents = read_file(filename,  buf.st_size);
+    if (config_contents == NULL) {
+        return NULL;
+    }
 
     // parse config file
     struct client_config *configs = malloc(sizeof(struct client_config));
     parse_config(configs, config_contents);
 
-    // establish connection and send config contents
+    // create socket and establish connection
     int sockfd;
     if ((sockfd = create_tcp_socket()) < 0) {
         return NULL;
@@ -96,15 +110,16 @@ struct client_config* pre_probing(char *filename)
         return NULL;
     }
 
+    // send config data
     if (send_stream(sockfd, config_contents) < 0) {
         return NULL;
     }
     
+    printf("Config contents sent, closing TCP connection.\n");
     if (close(sockfd) < 0) {
         perror("Error closing socket");
         return NULL;
     }
-    printf("Config contents sent, TCP connection closed.\n");
     free(config_contents);
 
     return configs;
@@ -117,38 +132,61 @@ int probing(struct client_config *configs)
         return -1;
     }
 
+    // set DF bit
+    if (set_df_bit(sock) < 0) {
+        return -1;
+    }
+
     struct sockaddr_in *my_addr; 
     if ((my_addr = get_addr_in(configs->server_ip, configs->udp_dest_port)) == NULL) {
         return -1;
     }
 
-    char* payload = create_payload(configs);
-    if (payload == NULL) {
-        return -1;
-    }
-
-    for (int i = 0; i < 20; i++) {
+    // send low entropy packets
+    char *payload;
+    for (uint16_t i = 0; i < configs->udp_train_size; i++) {
+        // use a short int
+        // increment using bit wise op
+        // move most sig and least sig
+        // and, or, shitfting
+        // 255 is least sig, unsigned short
+        
+        // create low entropy payload
+        payload = create_low_entropy_payload(configs->udp_payload_size, i);
+        if (payload == NULL) {
+            return -1;
+        }
+        
         if (send_packet(sock, payload, configs->udp_payload_size, my_addr) < 0) {
             return -1;
         }
     }
 
-    // use a short int
-    // incremenet using bit wise op
-    // move most sig and lest sig
-    // timeout 8s a lot, maybe 5?
+    printf("First train sent.\nSleeping for %ds.\n", configs->inter_measurement_time);
+    sleep(configs->inter_measurement_time);
 
-    // using clock
-    // get time of day (better one to use)
+    // send high entropy packets
+    for (uint16_t i = 0; i < configs->udp_train_size; i++) {
+        // create high entropy payload
+        payload = create_high_entropy_payload(configs->udp_payload_size, i);
+        if (payload == NULL) {
+            return -1;
+        }
 
-    // and, or, shitfting
-    // 255 is least sig, unsigned short
+        if (send_packet(sock, payload, configs->udp_payload_size, my_addr) < 0) {
+            return -1;
+        }
+    }
+
+    printf("Second train sent.\n");
+    free(payload);
 
     return 1;
 }
 
 int post_probing(struct client_config *configs)
 {
+    // create socket and establish connection
     int sockfd;
     if ((sockfd = create_tcp_socket()) < 0) {
         return -1;
@@ -157,13 +195,16 @@ int post_probing(struct client_config *configs)
     if ((sockfd = establish_connection(sockfd, configs->server_ip, configs->tcp_port)) < 0) {
         return -1;
     }
-    
+
+    // receive compression detection results
     char *msg;
     if ((msg = receive_stream(sockfd)) == NULL) {
         return -1;
     }
-    printf("Received msg: %s", msg);
+    printf("Result: %s\n", msg);
+    free(msg);
 
+    // close socket
     if (close(sockfd) < 0) {
         perror("Error closing socket");
         return -1;
@@ -191,11 +232,12 @@ int main(int argc, char *argv[])
     // probing phase
     usleep(10);
     probing(configs);
+    sleep(configs->timeout + 1); // wait for server to finsih getting packets bc of timeout
 
     // post probing phase
-    // if (post_probing(configs) < 0) {
-    //     return EXIT_FAILURE;
-    // }
+    if (post_probing(configs) < 0) {
+        return EXIT_FAILURE;
+    }
     
     // free config structure data
     free(configs);
