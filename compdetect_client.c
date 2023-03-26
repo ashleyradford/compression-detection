@@ -18,8 +18,7 @@ struct client_config {
     int udp_payload_size;
     int inter_measurement_time;
     uint16_t udp_train_size;
-    int ttl;
-    int timeout;
+    int udp_timeout;
 };
 
 char* read_file(char *filename, int size)
@@ -60,8 +59,7 @@ void parse_config(struct client_config *configs, char *contents)
     configs->udp_payload_size = atoi(cJSON_GetObjectItem(root, "udp_payload_size")->valuestring);
     configs->inter_measurement_time = atoi(cJSON_GetObjectItem(root, "inter_measurement_time")->valuestring);
     configs->udp_train_size = atoi(cJSON_GetObjectItem(root, "udp_train_size")->valuestring);
-    configs->ttl = atoi(cJSON_GetObjectItem(root, "ttl")->valuestring);
-    configs->timeout = atoi(cJSON_GetObjectItem(root, "timeout")->valuestring);
+    configs->udp_timeout = atoi(cJSON_GetObjectItem(root, "udp_timeout")->valuestring);
 }
 
 void set_packet_id(char *payload, int id)
@@ -250,7 +248,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
     // ensure server opens TCP
-    sleep(configs->timeout + 1);
+    sleep(configs->udp_timeout + 1);
 
     // ---- post probing phase ----
     if (post_probing(configs) < 0) {

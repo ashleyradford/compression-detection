@@ -15,11 +15,9 @@
 
 struct server_config {
     uint16_t udp_dest_port;
-    int udp_payload_size;
-    int inter_measurement_time;
     int udp_train_size;
+    int udp_timeout;
     int threshold;
-    int timeout;
 };
 
 void parse_config(struct server_config *configs, char *contents)
@@ -27,11 +25,9 @@ void parse_config(struct server_config *configs, char *contents)
     // parse json
     cJSON *root = cJSON_Parse(contents);
     configs->udp_dest_port = atoi(cJSON_GetObjectItem(root, "udp_dest_port")->valuestring);
-    configs->udp_payload_size = atoi(cJSON_GetObjectItem(root, "udp_payload_size")->valuestring);
-    configs->inter_measurement_time = atoi(cJSON_GetObjectItem(root, "inter_measurement_time")->valuestring);
     configs->udp_train_size = atoi(cJSON_GetObjectItem(root, "udp_train_size")->valuestring);
+    configs->udp_timeout = atoi(cJSON_GetObjectItem(root, "udp_timeout")->valuestring);
     configs->threshold = atoi(cJSON_GetObjectItem(root, "threshold")->valuestring);
-    configs->timeout = atoi(cJSON_GetObjectItem(root, "timeout")->valuestring);
 }
 
 double time_diff(struct timeval tv1, struct timeval tv2)
@@ -86,7 +82,7 @@ char* probing(struct server_config *configs)
     }
 
     // add timeout
-    if (add_timeout(sock, configs->timeout) < 0) {
+    if (add_timeout(sock, configs->udp_timeout) < 0) {
         return NULL;
     }
 
