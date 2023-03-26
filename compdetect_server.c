@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "cJSON.h"
 #include "tcp.h"
@@ -32,7 +33,8 @@ void parse_config(struct server_config *configs, char *contents)
     configs->timeout = atoi(cJSON_GetObjectItem(root, "timeout")->valuestring);
 }
 
-double time_difference(struct timeval tv1, struct timeval tv2) {
+double time_diff(struct timeval tv1, struct timeval tv2)
+{
     double tv1_mili = (tv1.tv_sec * 1000) + (tv1.tv_usec / 1000);
     double tv2_mili = (tv2.tv_sec * 1000) + (tv2.tv_usec / 1000);
     return tv1_mili - tv2_mili;
@@ -94,18 +96,17 @@ char* probing(struct server_config *configs)
     }
 
     struct timeval low_start, low_end, high_start, high_end;
-    char* packet;
+    char* payload;
     bool begin = false;
 
     // receive low entropy packets   
     for (int i = 0; i < configs->udp_train_size; i++) {
-        if ((packet = receive_packet(sock, my_addr)) == NULL) {
+        if ((payload = receive_packet(sock, my_addr)) == NULL) {
             if (errno == 11) {
                 break;
             }
             return NULL;
         }
-
         if (!begin) {
             gettimeofday(&low_start, NULL);
             begin = true;
@@ -113,17 +114,16 @@ char* probing(struct server_config *configs)
         gettimeofday(&low_end, NULL);
     }
     printf("First train received.\n");
-    
+
     // receive high entropy packets
     begin = false;
     for (int i = 0; i < configs->udp_train_size; i++) {
-        if ((packet = receive_packet(sock, my_addr)) == NULL) {
+        if ((payload = receive_packet(sock, my_addr)) == NULL) {
             if (errno == 11) {
                 break;
             }
             return NULL;
         }
-
         if (!begin) {
             gettimeofday(&high_start, NULL);
             begin = true;
@@ -134,13 +134,13 @@ char* probing(struct server_config *configs)
 
     // congestion detection calculations
     char *result;
-    double low_delta = time_difference(low_end, low_start);
-    double high_delta = time_difference(high_end, high_start);
+    double low_delta = time_diff(low_end, low_start);
+    double high_delta = time_diff(high_end, high_start);
     double difference = high_delta - low_delta;
 
-    printf("High delta: %.2fms\n", high_delta);
-    printf("Low delta: %.2fms\n", low_delta);
-    printf("Low and high delta: %.2fms\n", difference);
+    printf("Low entropy: %.0fms\n", low_delta);
+    printf("High entropy: %.0fms\n", high_delta);
+    printf("Delta: %.0fms\n", difference);
 
     if (difference > configs->threshold) {
         result = "Compression detected.";
@@ -149,7 +149,7 @@ char* probing(struct server_config *configs)
     }
 
     free(my_addr);
-    free(packet);
+    free(payload);
 
     return result;
 }
@@ -195,19 +195,19 @@ int main(int argc, char *argv[])
 
     uint16_t listen_port = atoi(argv[1]);
 
-    // pre probing phase
+    // ---- pre probing phase ----
     struct server_config *configs;
     if ((configs = pre_probing(listen_port)) == NULL) {
         return EXIT_FAILURE;
     }
 
-    // probing phase
+    // ---- probing phase ----
     char *results;
     if ((results = probing(configs)) == NULL) {
         return EXIT_FAILURE;
     }
 
-    // post probing phase
+    // ---- post probing phase ----
     if (post_probing(listen_port, results) < 0) {
         return EXIT_FAILURE;
     }
