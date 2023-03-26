@@ -2,19 +2,22 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/time.h>
+#include <stdbool.h>
 
 #include "cJSON.h"
 #include "tcp.h"
 #include "udp.h"
 
 #define RECV_BUFFER 1024
-#define TIMEOUT_MULTI 4
 
 struct server_config {
-    unsigned short udp_dest_port;
+    uint16_t udp_dest_port;
     int udp_payload_size;
     int inter_measurement_time;
     int udp_train_size;
+    int threshold;
+    int timeout;
 };
 
 void parse_config(struct server_config *configs, char *contents)
@@ -25,9 +28,17 @@ void parse_config(struct server_config *configs, char *contents)
     configs->udp_payload_size = atoi(cJSON_GetObjectItem(root, "udp_payload_size")->valuestring);
     configs->inter_measurement_time = atoi(cJSON_GetObjectItem(root, "inter_measurement_time")->valuestring);
     configs->udp_train_size = atoi(cJSON_GetObjectItem(root, "udp_train_size")->valuestring);
+    configs->threshold = atoi(cJSON_GetObjectItem(root, "threshold")->valuestring);
+    configs->timeout = atoi(cJSON_GetObjectItem(root, "timeout")->valuestring);
 }
 
-struct server_config* pre_probing(unsigned short listen_port)
+double time_difference(struct timeval tv1, struct timeval tv2) {
+    double tv1_mili = (tv1.tv_sec * 1000) + (tv1.tv_usec / 1000);
+    double tv2_mili = (tv2.tv_sec * 1000) + (tv2.tv_usec / 1000);
+    return tv1_mili - tv2_mili;
+}
+
+struct server_config* pre_probing(uint16_t listen_port)
 {
     // bind port and accept client connection
     int sock;
@@ -72,7 +83,7 @@ char* probing(struct server_config *configs)
     }
 
     // add timeout
-    if (add_timeout(sock, configs->inter_measurement_time / TIMEOUT_MULTI) < 0) {
+    if (add_timeout(sock, configs->timeout) < 0) {
         return NULL;
     }
 
@@ -82,25 +93,68 @@ char* probing(struct server_config *configs)
         return NULL;
     }
 
-    // receive packets
+    struct timeval low_start, low_end, high_start, high_end;
     char* packet;
-    while(1) {
+    bool begin = false;
+
+    // receive low entropy packets   
+    for (int i = 0; i < configs->udp_train_size; i++) {
         if ((packet = receive_packet(sock, my_addr)) == NULL) {
             if (errno == 11) {
                 break;
             }
             return NULL;
         }
+
+        if (!begin) {
+            gettimeofday(&low_start, NULL);
+            begin = true;
+        }
+        gettimeofday(&low_end, NULL);
+    }
+    printf("First train received.\n");
+    
+    // receive high entropy packets
+    begin = false;
+    for (int i = 0; i < configs->udp_train_size; i++) {
+        if ((packet = receive_packet(sock, my_addr)) == NULL) {
+            if (errno == 11) {
+                break;
+            }
+            return NULL;
+        }
+
+        if (!begin) {
+            gettimeofday(&high_start, NULL);
+            begin = true;
+        }
+        gettimeofday(&high_end, NULL);
+    }
+    printf("Second train received.\n");
+
+    // congestion detection calculations
+    char *result;
+    double low_delta = time_difference(low_end, low_start);
+    double high_delta = time_difference(high_end, high_start);
+    double difference = high_delta - low_delta;
+
+    printf("High delta: %.2fms\n", high_delta);
+    printf("Low delta: %.2fms\n", low_delta);
+    printf("Low and high delta: %.2fms\n", difference);
+
+    if (difference > configs->threshold) {
+        result = "Compression detected.";
+    } else {
+        result = "No compression detected.";
     }
 
-    // calculations ~ shorter than inter time
-
     free(my_addr);
+    free(packet);
 
-    return "Hellooo";
+    return result;
 }
 
-int post_probing(unsigned short listen_port, char *msg)
+int post_probing(uint16_t listen_port, char *msg)
 {
     // bind port and accept client connection
     int sock;
@@ -139,7 +193,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    unsigned short listen_port = atoi(argv[1]);
+    uint16_t listen_port = atoi(argv[1]);
 
     // pre probing phase
     struct server_config *configs;
@@ -154,9 +208,9 @@ int main(int argc, char *argv[])
     }
 
     // post probing phase
-    // if (post_probing(listen_port, results) < 0) {
-    //     return EXIT_FAILURE;
-    // }
+    if (post_probing(listen_port, results) < 0) {
+        return EXIT_FAILURE;
+    }
 
     // free config structure data
     free(configs);
