@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -g
+CFLAGS = -Wall -g -D DEBUG=0
 target = bin
 inter = obj
 
@@ -14,15 +14,15 @@ server: $(OBJS) | $(target)
 	$(CC) $(CFLAGS) $(OBJS) -o $(target)/compdetect_server
 
 # object files
-$(inter)/compdetect_client.o: compdetect_client.c cJSON.h tcp.h udp.h| $(inter)
+$(inter)/compdetect_client.o: compdetect_client.c cJSON.h tcp.h udp.h logger.h | $(inter)
 	$(CC) $(CFLAGS) -c compdetect_client.c -o $(inter)/compdetect_client.o
-$(inter)/compdetect_server.o: compdetect_server.c cJSON.h tcp.h udp.h| $(inter)
+$(inter)/compdetect_server.o: compdetect_server.c cJSON.h tcp.h udp.h logger.h | $(inter)
 	$(CC) $(CFLAGS) -c compdetect_server.c -o $(inter)/compdetect_server.o
 $(inter)/cJSON.o: cJSON.c | $(inter)
 	$(CC) $(CFLAGS) -c cJSON.c -o $(inter)/cJSON.o
-$(inter)/tcp.o: tcp.c | $(inter)
+$(inter)/tcp.o: tcp.c logger.h | $(inter)
 	$(CC) $(CFLAGS) -c tcp.c -o $(inter)/tcp.o
-$(inter)/udp.o: udp.c | $(inter)
+$(inter)/udp.o: udp.c logger.h | $(inter)
 	$(CC) $(CFLAGS) -c udp.c -o $(inter)/udp.o
 
 $(target):

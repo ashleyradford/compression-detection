@@ -9,6 +9,7 @@
 #include "cJSON.h"
 #include "tcp.h"
 #include "udp.h"
+#include "logger.h"
 
 struct client_config {
     in_addr_t server_ip;

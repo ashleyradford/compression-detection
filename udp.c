@@ -6,6 +6,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+#include "logger.h"
+
 #define RECV_BUFFER 1024
 
 int create_udp_socket()

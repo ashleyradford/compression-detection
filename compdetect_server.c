@@ -9,6 +9,7 @@
 #include "cJSON.h"
 #include "tcp.h"
 #include "udp.h"
+#include "logger.h"
 
 #define RECV_BUFFER 1024
 
@@ -63,7 +64,7 @@ struct server_config* pre_probing(uint16_t listen_port)
         return NULL;
     }
 
-    printf("Config contents received, closing TCP connection.\n");
+    LOGP("Config contents received, closing TCP connection.\n");
     if (close(new_sock) < 0 || close(sock) < 0) {
         perror("Error closing socket");
         return NULL;
@@ -113,7 +114,7 @@ char* probing(struct server_config *configs)
         }
         gettimeofday(&low_end, NULL);
     }
-    printf("First train received.\n");
+    LOGP("First train received.\n");
 
     // receive high entropy packets
     begin = false;
@@ -130,7 +131,7 @@ char* probing(struct server_config *configs)
         }
         gettimeofday(&high_end, NULL);
     }
-    printf("Second train received.\n");
+    LOGP("Second train received.\n");
 
     // congestion detection calculations
     char *result;
@@ -138,9 +139,9 @@ char* probing(struct server_config *configs)
     double high_delta = time_diff(high_end, high_start);
     double difference = high_delta - low_delta;
 
-    printf("Low entropy: %.0fms\n", low_delta);
-    printf("High entropy: %.0fms\n", high_delta);
-    printf("Delta: %.0fms\n", difference);
+    LOG("Low entropy: %.0fms\n", low_delta);
+    LOG("High entropy: %.0fms\n", high_delta);
+    LOG("Delta: %.0fms\n", difference);
 
     if (difference > configs->threshold) {
         result = "Compression detected.";
@@ -176,7 +177,7 @@ int post_probing(uint16_t listen_port, char *msg)
         return -1;
     }
 
-    printf("Congestion status sent, closing TCP connection.\n");
+    LOGP("Congestion status sent, closing TCP connection.\n");
     if (close(new_sock) < 0 || close(sock) < 0) {
         perror("Error closing socket");
         return -1;

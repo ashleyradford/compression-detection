@@ -6,6 +6,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "logger.h"
+
 #define RECV_BUFFER 1024
 
 int create_tcp_socket()
@@ -41,7 +43,7 @@ int establish_connection(int sockfd, in_addr_t server_ip, unsigned short server_
         perror("Error connecting to server");
         return -1;
     }
-    printf("Connected to server.\n");
+    LOGP("Connected to server.\n");
 
     return sockfd;
 }
@@ -67,7 +69,7 @@ int bind_and_listen(int sockfd, unsigned short port)
         perror("Error listening for client");
         return -1;
     }
-    printf("Listening for connections on port %d\n", ntohs(my_addr.sin_port));
+    LOG("Listening for connections on port %d\n", ntohs(my_addr.sin_port));
 
     return 1;
 }
@@ -82,7 +84,7 @@ int accept_connection(int sockfd)
         perror("Error accepting connections");
         return -1;
     }
-    printf("Connection accepted.\n");
+    LOGP("Connection accepted.\n");
 
     return new_sock;
 }
