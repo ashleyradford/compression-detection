@@ -137,7 +137,7 @@ struct client_config* pre_probing(char *filename)
         return NULL;
     }
     
-    printf("Config contents sent, closing TCP connection.\n");
+    LOGP("Config contents sent, closing TCP connection.\n");
     if (close(sockfd) < 0) {
         perror("Error closing socket");
         return NULL;
@@ -178,7 +178,7 @@ int probing(struct client_config *configs)
         }
     }
 
-    printf("First train sent.\nSleeping for %ds.\n", configs->inter_measurement_time);
+    LOG("First train sent.\nSleeping for %ds.\n", configs->inter_measurement_time);
     sleep(configs->inter_measurement_time);
 
     // high entropy train
@@ -193,7 +193,7 @@ int probing(struct client_config *configs)
         }
     }
 
-    printf("Second train sent.\n");
+    LOGP("Second train sent.\n");
     free(payload);
 
     return 1;
@@ -216,7 +216,7 @@ int post_probing(struct client_config *configs)
     if ((msg = receive_stream(sockfd)) == NULL) {
         return -1;
     }
-    printf("Result: %s\n", msg);
+    printf("%s\n", msg);
     free(msg);
 
     // close socket

@@ -74,7 +74,7 @@ int bind_port(int sockfd, struct sockaddr_in *addr_in)
         perror("Error binding socket to address");
         return -1;
     }
-    printf("Binded to port %d for incoming UDP packets.\n", ntohs(addr_in->sin_port));
+    LOG("Binded to port %d for incoming UDP packets.\n", ntohs(addr_in->sin_port));
 
     return 1;
 }
@@ -89,7 +89,7 @@ int send_packet(int sockfd, char *payload, int payload_size, struct sockaddr_in 
         perror("Error sending packet");
         return -1;
     }
-    // printf("Packet sent to %d.\n", ntohs(addr_in->sin_port));
+    // LOG("Packet sent to %d.\n", ntohs(addr_in->sin_port));
     
     return 1;
 }
@@ -113,7 +113,7 @@ char* receive_packet(int sockfd, struct sockaddr_in *addr_in)
         perror("Error receiving packet");
         return NULL;
     }
-    // printf("Bytes recieved: %d\n", bytes_received);
+    // LOG("Bytes recieved: %d\n", bytes_received);
 
     return buf;
 }
