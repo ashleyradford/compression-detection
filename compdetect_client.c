@@ -17,7 +17,7 @@ struct client_config {
     uint16_t tcp_port;
     int udp_payload_size;
     int inter_measurement_time;
-    uint16_t udp_train_size;
+    int udp_train_size;
     int udp_timeout;
 };
 
@@ -111,7 +111,7 @@ struct client_config* pre_probing(char *filename)
     }
 
     // read in config file contents
-    char *config_contents = read_file(filename,  buf.st_size);
+    char *config_contents = read_file(filename, buf.st_size);
     if (config_contents == NULL) {
         return NULL;
     }

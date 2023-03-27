@@ -28,7 +28,7 @@ int create_tcp_socket()
     return sockfd;
 }
 
-int establish_connection(int sockfd, in_addr_t server_ip, unsigned short server_port)
+int establish_connection(int sockfd, in_addr_t server_ip, uint16_t server_port)
 {
     // setting up addr struct
     struct sockaddr_in server_addr;
@@ -48,7 +48,7 @@ int establish_connection(int sockfd, in_addr_t server_ip, unsigned short server_
     return sockfd;
 }
 
-int bind_and_listen(int sockfd, unsigned short port)
+int bind_and_listen(int sockfd, uint16_t port)
 {
     // setting up addr struct
     struct sockaddr_in my_addr;

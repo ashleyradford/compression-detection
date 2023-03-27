@@ -10,7 +10,7 @@
 int create_udp_socket();
 int add_timeout(int sockfd, int wait_time);
 int set_df_bit(int sockfd);
-struct sockaddr_in* get_addr_in(in_addr_t ip, int port);
+struct sockaddr_in* get_addr_in(in_addr_t ip, uint16_t port);
 int bind_port(int sockfd, struct sockaddr_in *addr_in);
 int send_packet(int sockfd, char *payload, int payload_size, struct sockaddr_in *addr_in);
 char* receive_packet(int sockfd, struct sockaddr_in *addr_in);

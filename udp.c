@@ -43,7 +43,7 @@ int set_df_bit(int sockfd) {
     return sockfd;
 }
 
-struct sockaddr_in* get_addr_in(in_addr_t ip, int port)
+struct sockaddr_in* get_addr_in(in_addr_t ip, uint16_t port)
 {
     // setting up addr struct
     struct sockaddr_in *my_addr = malloc(sizeof(struct sockaddr_in));
