@@ -1,18 +1,15 @@
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
-#include <string.h>
-
 #include <sys/stat.h>
-#include <arpa/inet.h>
 
 #include "cJSON.h"
-#include "tcp.h"
-#include "udp.h"
+#include "sockets.h"
+#include "util.h"
 #include "logger.h"
 
 struct client_config {
-    in_addr_t server_ip;
+    char* server_ip;
     uint16_t udp_dest_port;
     uint16_t tcp_port;
     int udp_payload_size;
@@ -21,85 +18,17 @@ struct client_config {
     int udp_timeout;
 };
 
-char* read_file(char *filename, int size)
-{
-    // malloc buffer size
-    char *buf = malloc(size);
-    if (buf == NULL) {
-        perror("Error when mallocing buf");
-        return NULL;
-    }
-
-    // open file
-    FILE *fp;
-    if ((fp = fopen(filename, "r")) < 0) {
-        perror("Error when opening file");
-        free(buf);
-        return NULL;
-    }
-
-    // read file
-    if (fread(buf, size, 1, fp) < 0) {
-        perror("Error when reading file");
-        free(buf);
-        return NULL;
-    }
-    fclose(fp);
-
-    return buf;
-}
-
 void parse_config(struct client_config *configs, char *contents)
 {
     // parse json
     cJSON *root = cJSON_Parse(contents);
-    configs->server_ip = inet_addr(cJSON_GetObjectItem(root, "server_ip")->valuestring);
+    configs->server_ip = cJSON_GetObjectItem(root, "server_ip")->valuestring;
     configs->udp_dest_port = atoi(cJSON_GetObjectItem(root, "udp_dest_port")->valuestring);
     configs->tcp_port = atoi(cJSON_GetObjectItem(root, "tcp_port")->valuestring);
     configs->udp_payload_size = atoi(cJSON_GetObjectItem(root, "udp_payload_size")->valuestring);
     configs->inter_measurement_time = atoi(cJSON_GetObjectItem(root, "inter_measurement_time")->valuestring);
     configs->udp_train_size = atoi(cJSON_GetObjectItem(root, "udp_train_size")->valuestring);
     configs->udp_timeout = atoi(cJSON_GetObjectItem(root, "udp_timeout")->valuestring);
-}
-
-void set_packet_id(char *payload, int id)
-{
-    if (id <= 255) {
-        memset(payload, 0, 1);
-        memset(payload + 1, id, 1);
-    } else {
-        memset(payload + 1, id & 255, 1);
-        id >>= 8;
-        memset(payload, id & 255, 1);
-    }
-}
-
-char* create_low_entropy_payload(int id, int payload_size)
-{
-    char *payload = malloc(payload_size);
-    if (payload == NULL) {
-        perror("Error mallocing payload");
-        return NULL;
-    }
-    memset(payload, 0, payload_size);
-
-    // set packet id
-    set_packet_id(payload, id);
-
-    return payload;
-}
-
-char* create_high_entropy_payload(int id, int payload_size)
-{
-    char *payload = read_file("myrandom", payload_size);
-    if (payload == NULL) {
-        return NULL;
-    }
-
-    // set packet id
-    set_packet_id(payload, id);
-
-    return payload;
 }
 
 struct client_config* pre_probing(char *filename)
@@ -159,7 +88,7 @@ int probing(struct client_config *configs)
 
     // set up addr struct
     struct sockaddr_in *my_addr; 
-    if ((my_addr = get_addr_in(configs->server_ip, configs->udp_dest_port)) == NULL) {
+    if ((my_addr = set_addr_struct(configs->server_ip, configs->udp_dest_port)) == NULL) {
         return -1;
     }
 

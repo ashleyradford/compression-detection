@@ -1,4 +1,4 @@
-/* Source: https://www.cs.usfca.edu/~mmalensek/cs326/schedule/code/week04/debug.c.html */
+/* Source Matthew Malensek: https://www.cs.usfca.edu/~mmalensek/cs326/schedule/code/week04/debug.c.html */
 
 #ifndef DEBUG
 #define DEBUG 0

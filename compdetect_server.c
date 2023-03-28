@@ -1,14 +1,14 @@
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/time.h>
-#include <stdbool.h>
-#include <string.h>
+#include <netinet/in.h>
 
 #include "cJSON.h"
-#include "tcp.h"
-#include "udp.h"
+#include "sockets.h"
+#include "util.h"
 #include "logger.h"
 
 #define RECV_BUFFER 1024
@@ -28,13 +28,6 @@ void parse_config(struct server_config *configs, char *contents)
     configs->udp_train_size = atoi(cJSON_GetObjectItem(root, "udp_train_size")->valuestring);
     configs->udp_timeout = atoi(cJSON_GetObjectItem(root, "udp_timeout")->valuestring);
     configs->threshold = atoi(cJSON_GetObjectItem(root, "threshold")->valuestring);
-}
-
-double time_diff(struct timeval tv1, struct timeval tv2)
-{
-    double tv1_mili = (tv1.tv_sec * 1000) + (tv1.tv_usec / 1000);
-    double tv2_mili = (tv2.tv_sec * 1000) + (tv2.tv_usec / 1000);
-    return tv1_mili - tv2_mili;
 }
 
 struct server_config* pre_probing(uint16_t listen_port)
@@ -87,7 +80,7 @@ char* probing(struct server_config *configs)
     }
 
     // set up addr struct and bind port
-    struct sockaddr_in *my_addr = get_addr_in(INADDR_ANY, configs->udp_dest_port);
+    struct sockaddr_in *my_addr = set_addr_struct(INADDR_ANY, configs->udp_dest_port);
     if (bind_port(sock, my_addr) < 0) {
         return NULL;
     }
