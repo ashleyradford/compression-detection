@@ -1,0 +1,49 @@
+// will need to set TTL with the setsocketopt
+
+// hope that the machine will follow normal TCP behavior ~ if we
+// send a SYN packet to a close port we expect the other party to responde
+// with a RST, but we cannot require this, we may not get it
+
+// will have two fake SYN packets intentionally to close ports to get some feedback
+
+// going to measure the time difference of the RST
+
+// if we dont actually get the RSTs, then we will have a timeout, set this when first SYN
+// packet is sent, and after 60 seconds, if we dont receive RST packet, our program will
+// stop and say insufficient to determine if there is compression
+// can do this with signals
+
+// detecting where compression link is with TTL
+// set it to whatever the user asks for
+// do this with the setsocketopt, so otherwise this is exactly the same in part 1
+
+// build the entire packet from scratch, will need TCP and IP headers and so on
+// and set the SYN flag and also set two different ports...need two different ports
+// because we want a way to distinguish between the two RSTs that we send, will
+// know which one they belogn to because they will contain port number
+
+// nmap to really make sure that the port is closed, this will do a port scan on server vm
+// and tell us which ports are open and which ports are closed
+
+// to test that timeout works
+// iptables -I OUTPUT -p tcp --tcp-flags ALL RST,ACK -j DROP
+// iptables -I OUTPUT -p tcp --tcp-flags ALL RST -j DROP
+
+// revert the changes
+// iptables --flush
+
+// TODO
+// Slide 36 in lecture 7, where to put this code?
+// Ask about MDNS and DCERPC protocols ~ it says those that are only triggered
+// by my application, how can I know? ANd what abotu ARP?
+
+// give default values for the 7 - 10!
+// make udp timeout a function of the inter measurement time
+// set udp source port
+// make sure id nums are in correct endianness
+// also check for host in raw socket
+// raw sockets ~ what port to send udp packets
+// how come i get some IMCP messages but not others in part 2?
+
+// how to do timeout
+// recvfrom issue

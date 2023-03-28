@@ -23,7 +23,7 @@ int send_stream(int sockfd, char *msg);
 char* receive_stream(int sockfd);
 int create_udp_socket();
 int bind_port(int sockfd, struct sockaddr_in *addr_in);
-int send_packet(int sockfd, char *packet, int packet_size, struct sockaddr_in *addr_in);
+int send_packet(int sockfd, char *packet, int packet_size, struct sockaddr_in *sin);
 char* receive_packet(int sockfd, struct sockaddr_in *addr_in);
 
 #endif

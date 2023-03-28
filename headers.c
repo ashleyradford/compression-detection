@@ -43,7 +43,7 @@ uint16_t checksum(const char *buf, uint32_t size)
     return ~sum;
 }
 
-void fill_in_iphdr(struct ip* iphdr, struct sockaddr_in *src_addr, struct sockaddr_in *dst_addr)
+void fill_in_iphdr(struct ip* iphdr, int ttl, struct sockaddr_in *src_addr, struct sockaddr_in *dst_addr)
 {
     iphdr->ip_v = 4;                                 // version (4 bits)
     iphdr->ip_hl = IP4_HDRLEN / sizeof(uint32_t);    // header length (4 bits)
@@ -62,7 +62,7 @@ void fill_in_iphdr(struct ip* iphdr, struct sockaddr_in *src_addr, struct sockad
                         + (ip_flags[2] << 13)
                         +  ip_flags[3]);
 
-    iphdr->ip_ttl = 255;        // time to live (8 bits)
+    iphdr->ip_ttl = ttl;        // time to live (8 bits)
     iphdr->ip_p = IPPROTO_TCP;  // protocol (8 bits)
     iphdr->ip_sum = 0;          // header checksum, first set to 0 (16 bits)
 
@@ -108,7 +108,7 @@ void fill_in_tcphdr(struct tcphdr* tcphdr, struct sockaddr_in *src_addr, struct 
 // IP address, protocol number (6 for TCP), and the TCP segment length. 
 // The TCP segment length is the length of the TCP header and data in bytes.
 // We have no data, so for us it will just be the TCP header.
-char* create_syn_packet(struct sockaddr_in *src_addr, struct sockaddr_in *dst_addr, int len)
+char* create_syn_packet(struct sockaddr_in *src_addr, struct sockaddr_in *dst_addr, int len, int ttl)
 {
     // datagram to represent the packet
     char *datagram = malloc(len);
@@ -123,7 +123,7 @@ char* create_syn_packet(struct sockaddr_in *src_addr, struct sockaddr_in *dst_ad
     struct tcphdr *tcphdr = (struct tcphdr*) (datagram + sizeof(struct ip));
 
     // fill in headers
-    fill_in_iphdr(iphdr, src_addr, dst_addr);
+    fill_in_iphdr(iphdr, ttl, src_addr, dst_addr);
     fill_in_tcphdr(tcphdr, src_addr, dst_addr);
 
     struct pseudo_header psh;

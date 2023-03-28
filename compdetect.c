@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 #include <unistd.h>
 #include <pthread.h>
 
@@ -28,11 +29,13 @@ struct config {
     int inter_measurement_time;
     int udp_train_size;
     int udp_timeout;
+    int rst_timeout;
+    int ttl;
 };
 
 struct thread_data {
     int sockfd;
-    struct sockaddr_in *sin;
+    struct sockaddr_in *recv_addr;
     double result;
 };
 
@@ -50,6 +53,8 @@ void parse_config(struct config *configs, char *contents)
     configs->inter_measurement_time = atoi(cJSON_GetObjectItem(root, "inter_measurement_time")->valuestring);
     configs->udp_train_size = atoi(cJSON_GetObjectItem(root, "udp_train_size")->valuestring);
     configs->udp_timeout = atoi(cJSON_GetObjectItem(root, "udp_timeout")->valuestring);
+    configs->rst_timeout = atoi(cJSON_GetObjectItem(root, "rst_timeout")->valuestring);
+    configs->ttl = atoi(cJSON_GetObjectItem(root, "ttl")->valuestring);
 }
 
 void* receive_routine(void *arg)
@@ -63,16 +68,17 @@ void* receive_routine(void *arg)
     char* buf;
 
     while(1) {
-        buf = receive_packet(tdata->sockfd, tdata->sin);
+        buf = receive_packet(tdata->sockfd, tdata->recv_addr);
         if (buf == NULL) {
-            // what do here
+            printf("HUH");
+            // what to do here
             exit(-1);
         }
 
         // check if RST packet
         char tcp_flags = buf[33];
         if (tcp_flags & (1 << 2)) {
-            LOGP("RST packet received.\n"); // also check port?
+            LOGP("RST packet received.\n"); // ALSO CHECK PORT and ADDR
             if (!tail) {
                 gettimeofday(&head_syn, NULL);
                 tail = true;
@@ -122,56 +128,97 @@ int main(int argc, char *argv[])
     }
 
     // create raw socket
-    int sock;
-    if ((sock = create_raw_socket()) < 0) {
+    int raw_sock;
+    if ((raw_sock = create_raw_socket()) < 0) {
         return EXIT_FAILURE;
     }
 
     // add timeout
-    if (add_timeout(sock, configs->udp_timeout) < 0) {
-        return EXIT_FAILURE;
-    }
+    // if (add_timeout(raw_sock configs->rst_timeout) < 0) {
+    //     return EXIT_FAILURE;
+    // }
+
+    // set up thread data
+    struct thread_data *tdata = malloc(sizeof(struct thread_data));
+    tdata->sockfd = raw_sock;
+    struct sockaddr_in *recv_addr = malloc(sizeof(struct sockaddr));
+    memset(recv_addr, 0, sizeof(struct sockaddr));
+    tdata->recv_addr = recv_addr;
+    pthread_t receive_thread;
 
     // start receive thread
-    struct thread_data *low_rst = malloc(sizeof(struct thread_data));
-    low_rst->sockfd = sock;
-    low_rst->sin = my_addr;
-    pthread_t receive_thread;
-    void* status;
-    if (pthread_create(&receive_thread, NULL, receive_routine, (void *) low_rst) < 0) {
+    if (pthread_create(&receive_thread, NULL, receive_routine, (void *) tdata) < 0) {
         perror("Error creating receive thread");
         return EXIT_FAILURE;
     }
 
-    // ------ send head SYN packet ------
-    // set up server addr struct
+    // -------- send head SYN packet --------
+    // set up addr struct for head port
     struct sockaddr_in *head_serv_addr;
     if ((head_serv_addr = set_addr_struct(configs->server_ip, configs->tcp_head_dest)) == NULL) {
         return EXIT_FAILURE;
     }
 
     // create syn packet
-    char* head_syn_packet = create_syn_packet(my_addr, head_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
+    char* head_syn_packet = create_syn_packet(my_addr, head_serv_addr, IP4_HDRLEN + TCP_HDRLEN, configs->ttl);
     if (head_syn_packet == NULL) {
         return EXIT_FAILURE;
     }
+    
     // print_packet(head_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
-    send_packet(sock, head_syn_packet, IP4_HDRLEN + TCP_HDRLEN, head_serv_addr);
+    send_packet(raw_sock, head_syn_packet, IP4_HDRLEN + TCP_HDRLEN, head_serv_addr);
+    LOGP("Sent head syn packet.\n");
 
-    // ------ send tail SYN packet -----
-    // set up server addr struct
+    // ------ send low UDP packet train ------
+    int udp_sock;
+    if ((udp_sock = create_udp_socket()) < 0) {
+        return -1;
+    }
+
+    // set DF bit
+    if (set_df_bit(udp_sock) < 0) {
+        return -1;
+    }
+
+    // set up addr struct
+    struct sockaddr_in *udp_serv_addr; 
+    if ((udp_serv_addr = set_addr_struct(configs->server_ip, configs->udp_dest_port)) == NULL) {
+        return -1;
+    }
+
+    // low entropy train
+    char *payload;
+    for (int i = 0; i < configs->udp_train_size; i++) {
+        payload = create_low_entropy_payload(i, configs->udp_payload_size);
+        if (payload == NULL) {
+            return -1;
+        }
+        // send low entropy packets
+        if (send_packet(udp_sock, payload, configs->udp_payload_size, udp_serv_addr) < 0) {
+            return -1;
+        }
+    }
+
+    free(payload);
+
+    // -------- send tail SYN packet --------
+    // set up addr struct for tail port
     struct sockaddr_in *tail_serv_addr;
     if ((tail_serv_addr = set_addr_struct(configs->server_ip, configs->tcp_tail_dest)) == NULL) {
         return EXIT_FAILURE;
     }
 
     // create syn packet
-    char* tail_syn_packet = create_syn_packet(my_addr, tail_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
+    char* tail_syn_packet = create_syn_packet(my_addr, tail_serv_addr, IP4_HDRLEN + TCP_HDRLEN, configs->ttl);
     if (tail_syn_packet == NULL) {
         return EXIT_FAILURE;
     }
-    send_packet(sock, tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN, tail_serv_addr);
 
+    // print_packet(tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
+    send_packet(raw_sock, tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN, tail_serv_addr);
+    LOGP("Sent tail syn packet.\n");
+
+    void* status;
     if (pthread_join(receive_thread, &status) < 0) {
         perror("Error joining thread");
         return EXIT_FAILURE;
@@ -182,7 +229,7 @@ int main(int argc, char *argv[])
     //     return EXIT_FAILURE;
     // }
 
-    LOG("First train delta result: %.0fms\n", low_rst->result);
+    LOG("First train delta result: %.0fms\n", tdata->result);
 
     // so have main thread to send
     // but start a pthread to receive first, and check if RST
@@ -207,13 +254,18 @@ int main(int argc, char *argv[])
     // compare results to detect compression
 
     // free memory
-    free(low_rst);
+    free(tdata);
+    free(recv_addr);
     free(head_syn_packet);
     free(tail_syn_packet);
 
-    // close socket
-    if (close(sock) < 0) {
-        perror("Error closing socket");
+    // close sockets
+    if (close(raw_sock) < 0) {
+        perror("Error closing raw socket");
+        return EXIT_FAILURE;
+    }
+    if (close(udp_sock) < 0) {
+        perror("Error closing udp socket");
         return EXIT_FAILURE;
     }
 

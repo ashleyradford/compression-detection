@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/time.h>
@@ -54,7 +55,11 @@ struct server_config* pre_probing(uint16_t listen_port)
     }
 
     LOGP("Config contents received, closing TCP connection.\n");
-    if (close(new_sock) < 0 || close(sock) < 0) {
+    if (close(sock) < 0) {
+        perror("Error closing socket");
+        return NULL;
+    }
+    if (close(new_sock) < 0) {
         perror("Error closing socket");
         return NULL;
     }
@@ -85,13 +90,16 @@ char* probing(struct server_config *configs)
         return NULL;
     }
 
+    // prep structures and data for packet trains
+    struct sockaddr_in *recv_addr = malloc(sizeof(struct sockaddr));
+    memset(recv_addr, 0, sizeof(struct sockaddr));
     struct timeval low_start, low_end, high_start, high_end;
     char* payload;
     bool begin = false;
 
     // receive low entropy packets   
     for (int i = 0; i < configs->udp_train_size; i++) {
-        if ((payload = receive_packet(sock, my_addr)) == NULL) {
+        if ((payload = receive_packet(sock, recv_addr)) == NULL) {
             if (errno == 11) { // EAGAIN
                 break;
             }
@@ -108,7 +116,7 @@ char* probing(struct server_config *configs)
     // receive high entropy packets
     begin = false;
     for (int i = 0; i < configs->udp_train_size; i++) {
-        if ((payload = receive_packet(sock, my_addr)) == NULL) {
+        if ((payload = receive_packet(sock, recv_addr)) == NULL) {
             if (errno == 11) { // EAGAIN
                 break;
             }
@@ -122,7 +130,7 @@ char* probing(struct server_config *configs)
     }
     LOGP("Second train received.\n");
 
-    // congestion detection calculations
+    // compression detection calculations
     char *result;
     double low_delta = time_diff(low_end, low_start);
     double high_delta = time_diff(high_end, high_start);
@@ -139,6 +147,7 @@ char* probing(struct server_config *configs)
     }
 
     free(my_addr);
+    free(recv_addr);
     free(payload);
 
     return result;
@@ -161,13 +170,17 @@ int post_probing(uint16_t listen_port, char *msg)
         return -1;
     }
 
-    // send congestion results
+    // send compression results
     if (send_stream(new_sock, msg) < 0) {
         return -1;
     }
 
-    LOGP("Congestion status sent, closing TCP connection.\n");
-    if (close(new_sock) < 0 || close(sock) < 0) {
+    LOGP("Compression status sent, closing TCP connection.\n");
+    if (close(sock) < 0) {
+        perror("Error closing socket");
+        return -1;
+    }
+    if (close(new_sock) < 0) {
         perror("Error closing socket");
         return -1;
     }

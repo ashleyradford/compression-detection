@@ -222,22 +222,23 @@ int bind_port(int sockfd, struct sockaddr_in *addr_in)
     return 1;
 }
 
-int send_packet(int sockfd, char *packet, int packet_size, struct sockaddr_in *addr_in)
+int send_packet(int sockfd, char *packet, int packet_size, struct sockaddr_in *sin)
 {
     int to_len, bytes_sent;
     to_len = sizeof(struct sockaddr);
     
     if ((bytes_sent = sendto(sockfd, packet, packet_size, 0,
-                        (struct sockaddr *) addr_in, to_len)) < 0) {
+                        (struct sockaddr *) sin, to_len)) < 0) {
         perror("Error sending packet");
         return -1;
     }
-    // LOG("Packet sent to %d.\n", ntohs(addr_in->sin_port));
+
+    // LOG("Packet sent to %d.\n", ntohs(sin->sin_port));
     
     return 1;
 }
 
-char* receive_packet(int sockfd, struct sockaddr_in *addr_in)
+char* receive_packet(int sockfd, struct sockaddr_in *sin)
 {
     char *buf = malloc(RECV_BUFFER);
     if (buf == NULL) {
@@ -249,14 +250,17 @@ char* receive_packet(int sockfd, struct sockaddr_in *addr_in)
     int bytes_received;
     uint from_len = sizeof(struct sockaddr);
     if ((bytes_received = recvfrom(sockfd, buf, RECV_BUFFER, 0,
-                            (struct sockaddr *) addr_in, &from_len)) < 0) {
+                            (struct sockaddr *) sin, &from_len)) < 0) {
         if (errno == 11) {
             return NULL;
         }
         perror("Error receiving packet");
         return NULL;
     }
+
     // LOG("Bytes recieved: %d\n", bytes_received);
+    // LOG("Received from ip: %u\n", ntohl(sin->sin_addr.s_addr));
+    // LOG("Received from port: %d\n", ntohs(sin->sin_port));
 
     return buf;
 }
