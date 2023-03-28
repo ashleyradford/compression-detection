@@ -1,10 +1,12 @@
+// Compression Detection Notes
+
 // will need to set TTL with the setsocketopt
 
 // hope that the machine will follow normal TCP behavior ~ if we
 // send a SYN packet to a close port we expect the other party to responde
 // with a RST, but we cannot require this, we may not get it
 
-// will have two fake SYN packets intentionally to close ports to get some feedback
+// will have two fake SYN packets intentionally to closed ports to get some feedback
 
 // going to measure the time difference of the RST
 
@@ -32,18 +34,22 @@
 // revert the changes
 // iptables --flush
 
+// QUESTIONS
+// 1. slide 36 in lecture 7, where to put this code?
+// 2. ask about MDNS and DCERPC protocols ~ it says those that are only triggered
+//    by my application, how can I know? ANd what about ARP?
+// 3. how come i get some IMCP messages but not others in part 2?
+// 4. raw sockets, what port to send udp packets
+
 // TODO
-// Slide 36 in lecture 7, where to put this code?
-// Ask about MDNS and DCERPC protocols ~ it says those that are only triggered
-// by my application, how can I know? ANd what abotu ARP?
-
-// give default values for the 7 - 10!
-// make udp timeout a function of the inter measurement time
-// set udp source port
-// make sure id nums are in correct endianness
-// also check for host in raw socket
-// raw sockets ~ what port to send udp packets
-// how come i get some IMCP messages but not others in part 2?
-
-// how to do timeout
-// recvfrom issue
+// - fix TTL
+// - give default values for the 7 - 10!
+// - make udp timeout a function of the inter measurement time
+// - set udp source port
+// - make sure id nums are in correct endianness
+// - also check for host in raw socket
+// - timeout for raw socket
+// - explain why no abs value
+// - fix retransmisison
+// - memory leaks
+// - README.md

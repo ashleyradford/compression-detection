@@ -62,7 +62,8 @@ int create_raw_socket()
     return sockfd;
 }
 
-int add_timeout(int sockfd, int wait_time) {
+int add_timeout(int sockfd, int wait_time)
+{
     struct timeval timeout;
     timeout.tv_sec = wait_time;
     timeout.tv_usec = 0;
@@ -74,7 +75,8 @@ int add_timeout(int sockfd, int wait_time) {
     return sockfd;
 }
 
-int set_df_bit(int sockfd) {
+int set_df_bit(int sockfd)
+{
     int df = IP_PMTUDISC_DO; // sets DF bit
     if (setsockopt(sockfd, SOL_SOCKET, IP_MTU_DISCOVER, &df, sizeof df) == -1) {
         perror("Cannot set MTU discovery");
@@ -84,7 +86,7 @@ int set_df_bit(int sockfd) {
     return sockfd;
 }
 
-/* ------------------- TCP Specific Implementation ------------------- */
+/* ------------------- TCP Specific Functions ------------------- */
 int create_tcp_socket()
 {
     int sockfd;
@@ -198,7 +200,7 @@ char* receive_stream(int sockfd)
     return buf;
 }
 
-/* ------------------- UDP Specific Implementation ------------------- */
+/* ------------------- UDP Specific Functions ------------------- */
 int create_udp_socket()
 {
     int sockfd;

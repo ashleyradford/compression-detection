@@ -31,6 +31,7 @@ struct config {
     int udp_timeout;
     int rst_timeout;
     int ttl;
+    int threshold;
 };
 
 struct thread_data {
@@ -55,41 +56,55 @@ void parse_config(struct config *configs, char *contents)
     configs->udp_timeout = atoi(cJSON_GetObjectItem(root, "udp_timeout")->valuestring);
     configs->rst_timeout = atoi(cJSON_GetObjectItem(root, "rst_timeout")->valuestring);
     configs->ttl = atoi(cJSON_GetObjectItem(root, "ttl")->valuestring);
+    configs->threshold = atoi(cJSON_GetObjectItem(root, "threshold")->valuestring);
 }
 
 void* receive_routine(void *arg)
 {
-    // data to use and fill in
+    // thread data to fill in or use
     struct thread_data *tdata = (struct thread_data *) arg;
 
     // time difference
-    struct timeval head_syn, tail_syn;
+    struct timeval low_e_head, low_e_tail, high_e_head, high_e_tail;
     bool tail = false;
+    bool high_e_train = false;
     char* buf;
 
     while(1) {
         buf = receive_packet(tdata->sockfd, tdata->recv_addr);
         if (buf == NULL) {
-            printf("HUH");
             // what to do here
             exit(-1);
         }
 
-        // check if RST packet
+        // check if we received RST packet
         char tcp_flags = buf[33];
         if (tcp_flags & (1 << 2)) {
-            LOGP("RST packet received.\n"); // ALSO CHECK PORT and ADDR
+            LOGP("RST packet received.\n"); // ALSO CHECK PORT and ADDR ??
             if (!tail) {
-                gettimeofday(&head_syn, NULL);
+                if (!high_e_train) {
+                    gettimeofday(&low_e_head, NULL);
+                } else {
+                    gettimeofday(&high_e_head, NULL);
+                }
                 tail = true;
             } else {
-                gettimeofday(&tail_syn, NULL);
-                break;
+                if (!high_e_train) {
+                    gettimeofday(&low_e_tail, NULL);
+                    high_e_train = true;
+                    tail = false;
+                } else {
+                    gettimeofday(&high_e_tail, NULL);
+                    break;
+                }
             }
         }        
     }
 
-    tdata->result = time_diff(tail_syn, head_syn);
+    double low_delta = time_diff(low_e_tail, low_e_head);
+    double high_delta = time_diff(high_e_tail, high_e_head);
+    tdata->result = high_delta - low_delta;
+
     free(buf);
 
     return NULL;
@@ -153,8 +168,7 @@ int main(int argc, char *argv[])
     }
 
     // -------- send head SYN packet --------
-    // set up addr struct for head port
-    struct sockaddr_in *head_serv_addr;
+    struct sockaddr_in *head_serv_addr; // set up addr struct for head port
     if ((head_serv_addr = set_addr_struct(configs->server_ip, configs->tcp_head_dest)) == NULL) {
         return EXIT_FAILURE;
     }
@@ -167,7 +181,7 @@ int main(int argc, char *argv[])
     
     // print_packet(head_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
     send_packet(raw_sock, head_syn_packet, IP4_HDRLEN + TCP_HDRLEN, head_serv_addr);
-    LOGP("Sent head syn packet.\n");
+    LOGP("Sent low entropy head syn packet.\n");
 
     // ------ send low UDP packet train ------
     int udp_sock;
@@ -199,11 +213,12 @@ int main(int argc, char *argv[])
         }
     }
 
+    LOGP("First train sent.\n");
+
     free(payload);
 
     // -------- send tail SYN packet --------
-    // set up addr struct for tail port
-    struct sockaddr_in *tail_serv_addr;
+    struct sockaddr_in *tail_serv_addr; // set up addr struct for tail port
     if ((tail_serv_addr = set_addr_struct(configs->server_ip, configs->tcp_tail_dest)) == NULL) {
         return EXIT_FAILURE;
     }
@@ -216,7 +231,29 @@ int main(int argc, char *argv[])
 
     // print_packet(tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
     send_packet(raw_sock, tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN, tail_serv_addr);
-    LOGP("Sent tail syn packet.\n");
+    LOG("Sent low entropy tail syn packet. Sleeping for %ds.\n", configs->inter_measurement_time);
+    sleep(configs->inter_measurement_time);
+
+    // ~~~~~~~~~ High Entropy train ~~~~~~~~~~~
+    // -------- send head SYN packet --------
+    send_packet(raw_sock, head_syn_packet, IP4_HDRLEN + TCP_HDRLEN, head_serv_addr);
+    LOGP("Sent high entropy head syn packet.\n");
+
+    // ------ send high UDP packet train ------
+    for (int i = 0; i < configs->udp_train_size; i++) {
+        payload = create_high_entropy_payload(i, configs->udp_payload_size);
+        if (payload == NULL) {
+            return -1;
+        }
+        // send low entropy packets
+        if (send_packet(udp_sock, payload, configs->udp_payload_size, udp_serv_addr) < 0) {
+            return -1;
+        }
+    }
+
+    // -------- send tail SYN packet --------
+    send_packet(raw_sock, tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN, tail_serv_addr);
+    LOG("Sent low entropy tail syn packet. Sleeping for %ds.\n", configs->inter_measurement_time);
 
     void* status;
     if (pthread_join(receive_thread, &status) < 0) {
@@ -229,28 +266,21 @@ int main(int argc, char *argv[])
     //     return EXIT_FAILURE;
     // }
 
-    LOG("First train delta result: %.0fms\n", tdata->result);
-
-    // so have main thread to send
-    // but start a pthread to receive first, and check if RST
-    // start clock when we get first RST and then the second RST
+    LOG("Delta result: %.0fms\n", tdata->result);
+    if (tdata->result > configs->threshold) {
+        printf("Compression detected.\n");
+    } else {
+        printf("No compression detected.\n");
+    }
 
     // send head syn
-
     // send low entropy train
-
     // send tail syn 
-
     // free packet and close socket
-
-    // sleep intermeasurment after
-    
+    // sleep intermeasurement after
     // send head syn
-
     // send high entropy train
-
     // send tail syn
-
     // compare results to detect compression
 
     // free memory

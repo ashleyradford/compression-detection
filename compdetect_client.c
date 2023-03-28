@@ -105,7 +105,7 @@ int probing(struct client_config *configs)
         }
     }
 
-    LOG("First train sent.\nSleeping for %ds.\n", configs->inter_measurement_time);
+    LOG("First train sent. Sleeping for %ds.\n", configs->inter_measurement_time);
     sleep(configs->inter_measurement_time);
 
     // high entropy train
