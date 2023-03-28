@@ -1,13 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
 
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 #include "cJSON.h"
 #include "headers.h"
@@ -27,6 +30,19 @@ struct config {
     int udp_train_size;
     int udp_timeout;
 };
+
+struct thread_data {
+    int sockfd;
+    struct sockaddr_in *sin;
+    double result;
+};
+
+double time_diff(struct timeval tv1, struct timeval tv2)
+{
+    double tv1_mili = (tv1.tv_sec * 1000) + (tv1.tv_usec / 1000);
+    double tv2_mili = (tv2.tv_sec * 1000) + (tv2.tv_usec / 1000);
+    return tv1_mili - tv2_mili;
+}
 
 void parse_config(struct config *configs, char *contents)
 {
@@ -135,16 +151,6 @@ char* receive_packet(int sockfd, struct sockaddr_in *addr_in)
         perror("Error receiving packet");
         return NULL;
     }
-
-    // check if receive RST packet
-    char rst_flag = buf[33];
-    if (rst_flag & (1 << 2)) {
-        // break;
-    }
-
-    // write receive function
-    // if (pthread_Creat(&function_name, NULL, )
-
     // LOG("Bytes recieved: %d\n", bytes_received);
 
     return buf;
@@ -172,7 +178,6 @@ struct sockaddr_in* get_addr_in(char* ip, uint16_t port)
         }
     }
 
-    LOGP("Created socket address struct.\n");
     return sin;
 }
 
@@ -202,6 +207,42 @@ int add_timeout(int sockfd, int wait_time) {
     }
 
     return sockfd;
+}
+
+void* receive_routine(void *arg) {
+
+    struct thread_data *tdata = (struct thread_data *) arg;
+
+    // time difference
+    struct timeval head_syn, tail_syn;
+    bool tail = false;
+    char* buf;
+
+    while(1) {
+        buf = receive_packet(tdata->sockfd, tdata->sin);
+        if (buf == NULL) {
+            // what do here
+            exit(-1);
+        }
+
+        // check if RST packet
+        char tcp_flags = buf[33];
+        if (tcp_flags & (1 << 2)) {
+            LOGP("RST packet received.\n"); // also check port?
+            if (!tail) {
+                gettimeofday(&head_syn, NULL);
+                tail = true;
+            } else {
+                gettimeofday(&tail_syn, NULL);
+                break;
+            }
+        }        
+    }
+
+    tdata->result = time_diff(tail_syn, head_syn);
+    free(buf);
+
+    return NULL;
 }
 
 int main(int argc, char *argv[])
@@ -236,11 +277,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    // set up server addr struct
-    struct sockaddr_in *serv_addr;
-    if ((serv_addr = get_addr_in(configs->server_ip, configs->tcp_head_dest)) == NULL) {
-        return EXIT_FAILURE;
-    }
+    
 
     // create raw socket
     int sock;
@@ -258,21 +295,61 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    // create syn packet
-    char* syn_packet = create_syn_packet(my_addr, serv_addr, IP4_HDRLEN + TCP_HDRLEN);
-    if (syn_packet == NULL) {
-        perror("Error creating syn packet");
+    // start receive thread
+    struct thread_data *low_rst = malloc(sizeof(struct thread_data));
+    low_rst->sockfd = sock;
+    low_rst->sin = my_addr;
+    pthread_t receive_thread;
+    void* status;
+    if (pthread_create(&receive_thread, NULL, receive_routine, (void *) low_rst) < 0) {
+        perror("Error creating receive thread");
         return EXIT_FAILURE;
     }
 
-    // send fake SYN packet
-    print_packet(syn_packet, IP4_HDRLEN + TCP_HDRLEN);
-    send_packet(sock, syn_packet, IP4_HDRLEN + TCP_HDRLEN, serv_addr);
-
-    // receive RST packet
-    while(1) {
-        receive_packet(sock, my_addr);
+    // ------ send head SYN packet ------
+    // set up server addr struct
+    struct sockaddr_in *head_serv_addr;
+    if ((head_serv_addr = get_addr_in(configs->server_ip, configs->tcp_head_dest)) == NULL) {
+        return EXIT_FAILURE;
     }
+
+    // create syn packet
+    char* head_syn_packet = create_syn_packet(my_addr, head_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
+    if (head_syn_packet == NULL) {
+        return EXIT_FAILURE;
+    }
+    // print_packet(head_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
+    send_packet(sock, head_syn_packet, IP4_HDRLEN + TCP_HDRLEN, head_serv_addr);
+
+    // ------ send tail SYN packet -----
+    // set up server addr struct
+    struct sockaddr_in *tail_serv_addr;
+    if ((tail_serv_addr = get_addr_in(configs->server_ip, configs->tcp_tail_dest)) == NULL) {
+        return EXIT_FAILURE;
+    }
+
+    // create syn packet
+    char* tail_syn_packet = create_syn_packet(my_addr, tail_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
+    if (tail_syn_packet == NULL) {
+        return EXIT_FAILURE;
+    }
+    send_packet(sock, tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN, tail_serv_addr);
+
+
+    if (pthread_join(receive_thread, &status) < 0) {
+        perror("Error joining thread");
+        return EXIT_FAILURE;
+    }
+
+
+
+    // // check thread status
+    // if (status < 0) {
+    //     return EXIT_FAILURE;
+    // }
+
+    LOG("First train delta result: %.0fms\n", low_rst->result);
+
 
     // so have main thread to send
     // but start a pthread to receive first, and check if RST
@@ -297,7 +374,9 @@ int main(int argc, char *argv[])
     // compare results to detect compression
 
     // free memory
-    free(syn_packet);
+    free(low_rst);
+    free(head_syn_packet);
+    free(tail_syn_packet);
 
     // close socket
     if (close(sock) < 0) {

@@ -127,8 +127,6 @@ char* create_syn_packet(struct sockaddr_in *src_addr, struct sockaddr_in *dst_ad
     fill_in_tcphdr(tcphdr, src_addr, dst_addr);
 
     struct pseudo_header psh;
-    LOG("SRC addr: %d\n", src_addr->sin_addr.s_addr);
-    LOG("DST addr: %d\n", dst_addr->sin_addr.s_addr);
     psh.source_address = src_addr->sin_addr.s_addr;
     psh.dest_address = dst_addr->sin_addr.s_addr;
     psh.reserved = 0;
@@ -150,9 +148,6 @@ char* create_syn_packet(struct sockaddr_in *src_addr, struct sockaddr_in *dst_ad
     // calculate and store checksums
     tcphdr->th_sum = checksum((const char*) pseudogram, psize);
     iphdr->ip_sum = checksum((const char*) datagram, sizeof(struct ip));
-
-    LOG("TCP checksum: %d\n", tcphdr->th_sum);
-    LOG("IP checksum: %d\n", iphdr->ip_sum);
 
     free(pseudogram);
 
