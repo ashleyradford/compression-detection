@@ -44,12 +44,11 @@
 // TODO
 // - fix TTL
 // - give default values for the 7 - 10!
+// - timeout for raw socket
+// - fix retransmisison
 // - make udp timeout a function of the inter measurement time
 // - set udp source port
 // - make sure id nums are in correct endianness
 // - also check for host in raw socket
-// - timeout for raw socket
-// - explain why no abs value
-// - fix retransmisison
+// - README.md (explain why no abs value)
 // - memory leaks
-// - README.md
