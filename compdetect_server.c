@@ -99,7 +99,7 @@ char* probing(struct server_config *configs)
     // receive low entropy packets   
     for (int i = 0; i < configs->udp_train_size; i++) {
         if ((payload = receive_packet(sock, my_addr)) == NULL) {
-            if (errno == 11) {
+            if (errno == 11) { // EAGAIN
                 break;
             }
             return NULL;
@@ -116,7 +116,7 @@ char* probing(struct server_config *configs)
     begin = false;
     for (int i = 0; i < configs->udp_train_size; i++) {
         if ((payload = receive_packet(sock, my_addr)) == NULL) {
-            if (errno == 11) {
+            if (errno == 11) { // EAGAIN
                 break;
             }
             return NULL;

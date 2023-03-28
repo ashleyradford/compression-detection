@@ -16,10 +16,12 @@
 #define RECV_BUFFER 1024
 
 struct config {
+    char* client_ip;
     char* server_ip;
     uint16_t tcp_head_dest;
     uint16_t tcp_tail_dest;
     uint16_t udp_dest_port;
+    int tcp_port;
     int udp_payload_size;
     int inter_measurement_time;
     int udp_train_size;
@@ -30,7 +32,9 @@ void parse_config(struct config *configs, char *contents)
 {
     // parse json
     cJSON *root = cJSON_Parse(contents);
+    configs->client_ip = cJSON_GetObjectItem(root, "client_ip")->valuestring;
     configs->server_ip = cJSON_GetObjectItem(root, "server_ip")->valuestring;
+    configs->tcp_port = atoi(cJSON_GetObjectItem(root, "tcp_port")->valuestring);
     configs->tcp_head_dest = atoi(cJSON_GetObjectItem(root, "tcp_head_dest")->valuestring);
     configs->tcp_tail_dest = atoi(cJSON_GetObjectItem(root, "tcp_tail_dest")->valuestring);
     configs->udp_dest_port = atoi(cJSON_GetObjectItem(root, "udp_dest_port")->valuestring);
@@ -131,7 +135,17 @@ char* receive_packet(int sockfd, struct sockaddr_in *addr_in)
         perror("Error receiving packet");
         return NULL;
     }
-    LOG("Bytes recieved: %d\n", bytes_received);
+
+    // check if receive RST packet
+    char rst_flag = buf[33];
+    if (rst_flag & (1 << 2)) {
+        // break;
+    }
+
+    // write receive function
+    // if (pthread_Creat(&function_name, NULL, )
+
+    // LOG("Bytes recieved: %d\n", bytes_received);
 
     return buf;
 }
@@ -162,9 +176,9 @@ struct sockaddr_in* get_addr_in(char* ip, uint16_t port)
     return sin;
 }
 
-void print_packet(char* packet)
+void print_packet(char* packet, int size)
 {
-    for (int i = 0; i < 40; ++i) {
+    for (int i = 0; i < size; ++i) {
         // print each byte as bits
         for (int j = 7; 0 <= j; j--) {
             printf("%c", (packet[i] & (1 << j)) ? '1' : '0');
@@ -176,6 +190,18 @@ void print_packet(char* packet)
             printf(" ");
         }
     }
+}
+
+int add_timeout(int sockfd, int wait_time) {
+    struct timeval timeout;
+    timeout.tv_sec = wait_time;
+    timeout.tv_usec = 0;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout) == -1) {
+        perror("Cannot add receive timout");
+        return -1;
+    }
+
+    return sockfd;
 }
 
 int main(int argc, char *argv[])
@@ -206,9 +232,10 @@ int main(int argc, char *argv[])
 
     // set up source addr struct
     struct sockaddr_in *my_addr;
-    if ((my_addr = get_addr_in(0, 9000)) == NULL) {
+    if ((my_addr = get_addr_in(configs->client_ip, configs->tcp_port)) == NULL) {
         return EXIT_FAILURE;
     }
+
     // set up server addr struct
     struct sockaddr_in *serv_addr;
     if ((serv_addr = get_addr_in(configs->server_ip, configs->tcp_head_dest)) == NULL) {
@@ -218,6 +245,11 @@ int main(int argc, char *argv[])
     // create raw socket
     int sock;
     if ((sock = create_raw_socket()) < 0) {
+        return EXIT_FAILURE;
+    }
+
+    // add timeout
+    if (add_timeout(sock, configs->udp_timeout) < 0) {
         return EXIT_FAILURE;
     }
 
@@ -233,30 +265,45 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    // print packet
-    print_packet(syn_packet);
-
     // send fake SYN packet
+    print_packet(syn_packet, IP4_HDRLEN + TCP_HDRLEN);
     send_packet(sock, syn_packet, IP4_HDRLEN + TCP_HDRLEN, serv_addr);
 
     // receive RST packet
-    // receive_packet(sock, my_addr);
+    while(1) {
+        receive_packet(sock, my_addr);
+    }
+
+    // so have main thread to send
+    // but start a pthread to receive first, and check if RST
+    // start clock when we get first RST and then the second RST
+
+    // send head syn
+
+    // send low entropy train
+
+    // send tail syn 
+
+    // free packet and close socket
+
+    // sleep intermeasurment after
+    
+    // send head syn
+
+    // send high entropy train
+
+    // send tail syn
+
+    // compare results to detect compression
+
+    // free memory
+    free(syn_packet);
 
     // close socket
     if (close(sock) < 0) {
         perror("Error closing socket");
         return EXIT_FAILURE;
     }
-
-    // send head syn
-
-    // receive tail syn
-
-    // send low entropy train
-
-    // send high entropy train
-
-    // compare results to detect compression
 
     return EXIT_SUCCESS;
 }

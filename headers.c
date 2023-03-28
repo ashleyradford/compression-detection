@@ -32,12 +32,12 @@ uint16_t checksum(const char *buf, uint32_t size)
 
     // handle odd-sized case
     if (size & 1) {
-        uint16_t word16 = (unsigned char) buf[i];a
+        uint16_t word16 = (unsigned char) buf[i];
         sum += word16;
     }
 
     // fold to get the ones-complement result
-    while (sum >> 16) sum = (sum & 0xFFFF)+(sum >> 16);
+    while (sum >> 16) sum = (sum & 0xFFFF) + (sum >> 16);
 
     // invert to get the negative in ones-complement arithmetic
     return ~sum;
@@ -65,7 +65,7 @@ void fill_in_iphdr(struct ip* iphdr, struct sockaddr_in *src_addr, struct sockad
     iphdr->ip_ttl = 255;        // time to live (8 bits)
     iphdr->ip_p = IPPROTO_TCP;  // protocol (8 bits)
     iphdr->ip_sum = 0;          // header checksum, first set to 0 (16 bits)
-    
+
     iphdr->ip_src = src_addr->sin_addr;  // source IPv4 address (32 bits)
     iphdr->ip_dst = dst_addr->sin_addr;  // destination IPv4 address (32 bits)
 
@@ -97,7 +97,7 @@ void fill_in_tcphdr(struct tcphdr* tcphdr, struct sockaddr_in *src_addr, struct 
         tcphdr->th_flags += (tcp_flags[i] << i);
     }
 
-    tcphdr->th_win = htons(65535);  // window size (16 bits)
+    tcphdr->th_win = htons(1460);   // window size (16 bits)
     tcphdr->th_sum = 0;             // header checksum, first set to 0 (16 bits)
     tcphdr->th_urp = htons(0);      // urgent pointer (16 bits)    
 
@@ -107,7 +107,7 @@ void fill_in_tcphdr(struct tcphdr* tcphdr, struct sockaddr_in *src_addr, struct 
 // Create a pseudo-header by combining the source IP address, destination
 // IP address, protocol number (6 for TCP), and the TCP segment length. 
 // The TCP segment length is the length of the TCP header and data in bytes.
-// We have no data, so for us it will jsut be the TCP header.
+// We have no data, so for us it will just be the TCP header.
 char* create_syn_packet(struct sockaddr_in *src_addr, struct sockaddr_in *dst_addr, int len)
 {
     // datagram to represent the packet
@@ -127,6 +127,8 @@ char* create_syn_packet(struct sockaddr_in *src_addr, struct sockaddr_in *dst_ad
     fill_in_tcphdr(tcphdr, src_addr, dst_addr);
 
     struct pseudo_header psh;
+    LOG("SRC addr: %d\n", src_addr->sin_addr.s_addr);
+    LOG("DST addr: %d\n", dst_addr->sin_addr.s_addr);
     psh.source_address = src_addr->sin_addr.s_addr;
     psh.dest_address = dst_addr->sin_addr.s_addr;
     psh.reserved = 0;
@@ -146,8 +148,8 @@ char* create_syn_packet(struct sockaddr_in *src_addr, struct sockaddr_in *dst_ad
     memcpy(pseudogram + sizeof(struct pseudo_header), tcphdr, sizeof(struct tcphdr));
 
     // calculate and store checksums
-    // tcphdr->th_sum = checksum((const char*) pseudogram, psize);
-    // iphdr->ip_sum = checksum((const char*) datagram, iphdr->ip_len);
+    tcphdr->th_sum = checksum((const char*) pseudogram, psize);
+    iphdr->ip_sum = checksum((const char*) datagram, sizeof(struct ip));
 
     LOG("TCP checksum: %d\n", tcphdr->th_sum);
     LOG("IP checksum: %d\n", iphdr->ip_sum);
