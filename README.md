@@ -3,7 +3,7 @@
 Based on the techniques described in [End-to-End Detection of Compression of Traffic Flows by Intermediaries](https://www.cs.usfca.edu/vahab/resources/compression_detection.pdf) by Vahab Pournaghshband, Alexander Afanasyev, and Peter Reiher.
 
 ## Requirements
-Requires cJSON source and header files. See Resources.<br>
+Requires cJSON source and header files (included). See Resources.<br>
 A file filled with 2000 bytes of random data (included).<br>
 A json configs file with the following keys:<br>
 - **client_ip:** client IP address
