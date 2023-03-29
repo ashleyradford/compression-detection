@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * 
+ * Contains compression detection helper functions.
  */
 
 #include <stdio.h>
@@ -9,6 +9,14 @@
 #include <stddef.h>
 #include <string.h>
 
+/**
+ * Reads in file
+ *
+ * filename: name (+ path) of file to read in
+ * size: size of file
+ *
+ * returns: char pointer to contents if successful, NULL otherwise
+ */
 char* read_file(char *filename, int size)
 {
     // malloc buffer size
@@ -37,6 +45,12 @@ char* read_file(char *filename, int size)
     return buf;
 }
 
+/**
+ * Sets the id of a packet (first two bytes)
+ *
+ * payload: pointer to char array of packet
+ * int: id to set
+ */
 void set_packet_id(char *payload, int id)
 {
     if (id <= 255) {
@@ -49,6 +63,14 @@ void set_packet_id(char *payload, int id)
     }
 }
 
+/**
+ * Creates low entropy payload
+ *
+ * id: id of packet
+ * payload_size: size of payload
+ *
+ * returns: char pointer to payload if successful, NULL otherwise
+ */
 char* create_low_entropy_payload(int id, int payload_size)
 {
     char *payload = malloc(payload_size);
@@ -64,6 +86,14 @@ char* create_low_entropy_payload(int id, int payload_size)
     return payload;
 }
 
+/**
+ * Creates high entropy payload
+ *
+ * id: id of packet
+ * payload_size: size of payload
+ *
+ * returns: char pointer to payload if successful, NULL otherwise
+ */
 char* create_high_entropy_payload(int id, int payload_size)
 {
     char *payload = read_file("myrandom", payload_size);
@@ -77,6 +107,14 @@ char* create_high_entropy_payload(int id, int payload_size)
     return payload;
 }
 
+/**
+ * Finds the difference in milliseconds between two timeval structs (tv1 - tv2)
+ *
+ * tv1: struct timeval
+ * tv2: sturct timeval
+ *
+ * returns: double
+ */
 double time_diff_milli(struct timeval tv1, struct timeval tv2)
 {
     double tv1_mili = (tv1.tv_sec * 1000) + (tv1.tv_usec / 1000);
@@ -84,6 +122,14 @@ double time_diff_milli(struct timeval tv1, struct timeval tv2)
     return tv1_mili - tv2_mili;
 }
 
+/**
+ * Finds the difference in seconds between two timeval structs (tv1 - tv2)
+ *
+ * tv1: struct timeval
+ * tv2: sturct timeval
+ *
+ * returns: double
+ */
 double time_diff_sec(struct timeval tv1, struct timeval tv2)
 {
     double tv1_sec = tv1.tv_sec + (tv1.tv_usec / 1000000);
@@ -91,6 +137,12 @@ double time_diff_sec(struct timeval tv1, struct timeval tv2)
     return tv1_sec - tv2_sec;
 }
 
+/**
+ * Prints the binary representation of a packet, 4 bytes a row
+ *
+ * packet: char pointer to packet
+ * size: size of packet
+ */
 void print_packet(char* packet, int size)
 {
     for (int i = 0; i < size; ++i) {

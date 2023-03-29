@@ -1,7 +1,8 @@
 /**
  * @file
  *
- * 
+ * A standalone application that detects network compression, without
+ * requiring any cooperation from the server.
  */
 
 #include <stdio.h>
@@ -49,9 +50,14 @@ struct thread_data {
     char* result;
 };
 
+/**
+ * Parses JSON file for standalone specific configurations
+ *
+ * configs: config struct to fill
+ * contents: json text to parse
+ */
 void parse_config(struct config *configs, char *contents)
 {
-    // parse json
     cJSON *root = cJSON_Parse(contents);
     configs->client_ip = cJSON_GetObjectItem(root, "client_ip")->valuestring;
     configs->server_ip = cJSON_GetObjectItem(root, "server_ip")->valuestring;
@@ -69,6 +75,13 @@ void parse_config(struct config *configs, char *contents)
     configs->threshold = atoi(cJSON_GetObjectItem(root, "threshold")->valuestring);
 }
 
+/**
+ * Thread process for recieving packets through a raw socket, calculates
+ * compression when all 4 SYN pakcets arrive (or it times out) and
+ * updates thread_data struct with the results
+ *
+ * arg: void pointer (preferably pointer tp thread_data struct)
+ */
 void* receive_routine(void *arg)
 {
     // thread data to fill in or use
@@ -140,9 +153,24 @@ void* receive_routine(void *arg)
     return NULL;
 }
 
-int send_low_entropy_train(int raw_sock, char *head_syn_packet, struct sockaddr_in *head_serv_addr,     
-                            int udp_sock, struct sockaddr_in *udp_serv_addr, struct config *configs,
-                            char *tail_syn_packet, struct sockaddr_in *tail_serv_addr)
+/**
+ * Sends head SYN packet, low entropy train, and then tail SYN packet
+ *
+ * configs: pointer to config struct
+ * raw_sock: raw socket file descriptor
+ * head_syn_packet: pointer to head tcp syn packet
+ * head_serv_addr: pointer to sockaddr_in struct for head tcp port
+ * udp_sock: udp socket file descriptor
+ * udp_server_addr: pointer to sockaddr_in struct for udp port
+ * tail_syn_packet: pointer to tail tcp syn packet
+ * tail_serv_addr: sockaddr_in struct for tail tcp port
+ *
+ * returns: 1 if successful, -1 otherwise
+ */
+int send_low_entropy_train(struct config *configs, int raw_sock, char *head_syn_packet,
+                            struct sockaddr_in *head_serv_addr, int udp_sock,
+                            struct sockaddr_in *udp_serv_addr, char *tail_syn_packet,
+                            struct sockaddr_in *tail_serv_addr)
 {
     // send head SYN packet
     // print_packet(head_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
@@ -173,9 +201,24 @@ int send_low_entropy_train(int raw_sock, char *head_syn_packet, struct sockaddr_
     return 1;
 }
 
-int send_high_entropy_train(int raw_sock, char *head_syn_packet, struct sockaddr_in *head_serv_addr,     
-                            int udp_sock, struct sockaddr_in *udp_serv_addr, struct config *configs,
-                            char *tail_syn_packet, struct sockaddr_in *tail_serv_addr)
+/**
+ * Sends head SYN packet, high entropy train, and then tail SYN packet
+ *
+ * configs: pointer to config struct
+ * raw_sock: raw socket file descriptor
+ * head_syn_packet: pointer to head tcp syn packet
+ * head_serv_addr: pointer to sockaddr_in struct for head tcp port
+ * udp_sock: udp socket file descriptor
+ * udp_server_addr: pointer to sockaddr_in struct for udp port
+ * tail_syn_packet: pointer to tail tcp syn packet
+ * tail_serv_addr: sockaddr_in struct for tail tcp port
+ *
+ * returns: 1 if successful, -1 otherwise
+ */
+int send_high_entropy_train(struct config *configs, int raw_sock, char *head_syn_packet,
+                            struct sockaddr_in *head_serv_addr, int udp_sock,
+                            struct sockaddr_in *udp_serv_addr, char *tail_syn_packet,
+                            struct sockaddr_in *tail_serv_addr)
 {
     // send head SYN packet
     // print_packet(head_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
@@ -320,18 +363,16 @@ int main(int argc, char *argv[])
     }
 
     // -------- send entropy trains --------
-    if (send_low_entropy_train(raw_sock, head_syn_packet, head_serv_addr,
-                                udp_sock, udp_serv_addr, configs,
-                                tail_syn_packet, tail_serv_addr) < 0) {
+    if (send_low_entropy_train(configs, raw_sock, head_syn_packet, head_serv_addr,
+                                udp_sock, udp_serv_addr, tail_syn_packet, tail_serv_addr) < 0) {
         return EXIT_FAILURE;
     }
 
     LOG("Sent low entropy tail syn packet. Sleeping for %ds.\n", configs->inter_measurement_time);
     sleep(configs->inter_measurement_time);
 
-    if (send_high_entropy_train(raw_sock, head_syn_packet, head_serv_addr,
-                                    udp_sock, udp_serv_addr, configs,
-                                    tail_syn_packet, tail_serv_addr) < 0) {
+    if (send_high_entropy_train(configs, raw_sock, head_syn_packet, head_serv_addr,
+                                udp_sock, udp_serv_addr, tail_syn_packet, tail_serv_addr) < 0) {
         return EXIT_FAILURE;
     }
 

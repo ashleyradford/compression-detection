@@ -49,7 +49,7 @@ void parse_config(struct server_config *configs, char *contents)
  *
  * listen_port: port to listen on 
  *
- * returns: server_config struct parsed from received data
+ * returns: server_config struct if successful, NULL otherwise
  */
 struct server_config* pre_probing(uint16_t listen_port)
 {

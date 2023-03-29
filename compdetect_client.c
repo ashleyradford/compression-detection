@@ -54,7 +54,7 @@ void parse_config(struct client_config *configs, char *contents)
  *
  * filename: file to read, parse, and send
  *
- * returns: client_config struct parsed from filename
+ * returns: client_config struct if successful, NULL otherwise
  */
 struct client_config* pre_probing(char *filename)
 {

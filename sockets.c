@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * 
+ * Contains tcp, udp, and raw socket helper functions.
  */
 
 #include <stdio.h>
@@ -18,6 +18,14 @@
 
 #define RECV_BUFFER 1024
 
+/**
+ * Creates a sockaddr_in struct for the given ip and port numbers
+ *
+ * ip: char pointer to decimal ip address
+ * port: port number
+ *
+ * returns: pointer to sockaddr_in struct if successful, NULL otherwise
+ */
 struct sockaddr_in* set_addr_struct(char* ip, uint16_t port)
 {
     // setting up addr struct
@@ -43,6 +51,12 @@ struct sockaddr_in* set_addr_struct(char* ip, uint16_t port)
     return sin;
 }
 
+/**
+ * Creates raw socket and sets IP header flag so that
+ * OS does not add their own headers
+ *
+ * returns: raw socket file descriptor if successful, -1 otherwise
+ */
 int create_raw_socket()
 {
     int sockfd;
@@ -61,6 +75,14 @@ int create_raw_socket()
     return sockfd;
 }
 
+/**
+ * Adds timeout option to socket
+ *
+ * sockfd: socket file descriptor
+ * wait_time: timeout time
+ *
+ * returns: socket file descriptor if successful, -1 otherwise
+ */
 int add_timeout_opt(int sockfd, int wait_time)
 {
     struct timeval timeout;
@@ -74,6 +96,13 @@ int add_timeout_opt(int sockfd, int wait_time)
     return sockfd;
 }
 
+/**
+ * Adds dont fragment bit option to socket
+ *
+ * sockfd: socket file descriptor
+ *
+ * returns: socket file descriptor if successful, -1 otherwise
+ */
 int set_df_opt(int sockfd)
 {
     int df = IP_PMTUDISC_DO; // sets DF bit
@@ -85,6 +114,14 @@ int set_df_opt(int sockfd)
     return sockfd;
 }
 
+/**
+ * Adds TTL option to socket
+ *
+ * sockfd: socket file descriptor
+ * ttl: time to live
+ *
+ * returns: socket file descriptor if successful, -1 otherwise
+ */
 int add_ttl_opt(int sockfd, int ttl)
 {
     if (setsockopt(sockfd, SOL_SOCKET, IP_TTL, &ttl, sizeof ttl) == -1) {
@@ -95,7 +132,14 @@ int add_ttl_opt(int sockfd, int ttl)
     return sockfd;
 }
 
-/* ------------------- TCP Specific Functions ------------------- */
+// ------------------- TCP Specific Functions ------------------- //
+
+/**
+ * Creates tcp socket and sets reuseaddr option to prevent
+ * address already in use error
+ *
+ * returns: tcp socket file descriptor if successful, -1 otherwise
+ */
 int create_tcp_socket()
 {
     int sockfd;
@@ -114,6 +158,15 @@ int create_tcp_socket()
     return sockfd;
 }
 
+/**
+ * Establishes a tcp connection
+ *
+ * sockfd: tcp socket file descriptor
+ * server_ip: char pointer to decimal ip address
+ * server_port: tcp port number
+ *
+ * returns: tcp socket file descriptor if successful, -1 otherwise
+ */
 int establish_connection(int sockfd, char* server_ip, uint16_t server_port)
 {
     // setting up addr struct
@@ -137,6 +190,14 @@ int establish_connection(int sockfd, char* server_ip, uint16_t server_port)
     return sockfd;
 }
 
+/**
+ * Binds tcp socket and listens for incoming connections
+ *
+ * sockfd: tcp socket file descriptor
+ * port: tcp port number
+ *
+ * returns: 1 if successful, -1 otherwise
+ */
 int bind_and_listen(int sockfd, uint16_t port)
 {
     // setting up addr struct
@@ -163,6 +224,13 @@ int bind_and_listen(int sockfd, uint16_t port)
     return 1;
 }
 
+/**
+ * Accepts an incoming tcp connection
+ *
+ * sockfd: tcp socket file descriptor
+ *
+ * returns: new accepted socket file descriptor if successful, -1 otherwise
+ */
 int accept_connection(int sockfd)
 {
     struct sockaddr_in new_addr;
@@ -178,6 +246,14 @@ int accept_connection(int sockfd)
     return new_sock;
 }
 
+/**
+ * Sends data stream across tcp connection
+ *
+ * sockfd: tcp socket file descriptor
+ * msg: char pointer to data stream
+ *
+ * returns: 1 if successful, -1 otherwise
+ */
 int send_stream(int sockfd, char *msg)
 {
     int len, bytes_sent;
@@ -190,6 +266,13 @@ int send_stream(int sockfd, char *msg)
     return 1;
 }
 
+/**
+ * Receives data stream across tcp connection
+ *
+ * sockfd: tcp socket file descriptor
+ *
+ * returns: char pointer to received data if successful, NULL otherwise
+ */
 char* receive_stream(int sockfd)
 {
     char *buf = malloc(RECV_BUFFER);
@@ -208,7 +291,13 @@ char* receive_stream(int sockfd)
     return buf;
 }
 
-/* ------------------- UDP Specific Functions ------------------- */
+// ------------------- UDP Specific Functions ------------------- //
+
+/**
+ * Creates udp socket
+ *
+ * returns: udp socket file descriptor if successful, -1 otherwise
+ */
 int create_udp_socket()
 {
     int sockfd;
@@ -220,6 +309,14 @@ int create_udp_socket()
     return sockfd;
 }
 
+/**
+ * Binds udp socket
+ *
+ * sockfd: udp socket file descriptor
+ * sin: pointer to sockaddr_in struct for udp port
+ *
+ * returns: 1 if successful, -1 otherwise
+ */
 int bind_port(int sockfd, struct sockaddr_in *sin)
 {
     // binding socket to address
@@ -232,6 +329,16 @@ int bind_port(int sockfd, struct sockaddr_in *sin)
     return 1;
 }
 
+/**
+ * Sends udp datagram to specified address
+ *
+ * sockfd: udp socket file descriptor
+ * packet: char pointer to packet
+ * packet_size: packet size
+ * sin: pointer to sockaddr_in struct to send datagram to
+ *
+ * returns: 1 if successful, -1 otherwise
+ */
 int send_packet(int sockfd, char *packet, int packet_size, struct sockaddr_in *sin)
 {
     int to_len, bytes_sent;
@@ -248,6 +355,14 @@ int send_packet(int sockfd, char *packet, int packet_size, struct sockaddr_in *s
     return 1;
 }
 
+/**
+ * Receives udp datagram
+ *
+ * sockfd: udp socket file descriptor
+ * sin: pointer to sockaddr_in struct to be filled
+ *
+ * returns: char pointer to received data if successful, NULL otherwise
+ */
 char* receive_packet(int sockfd, struct sockaddr_in *sin)
 {
     char *buf = malloc(RECV_BUFFER);

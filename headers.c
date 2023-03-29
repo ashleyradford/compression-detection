@@ -142,7 +142,7 @@ void fill_in_tcphdr(struct tcphdr* tcphdr, struct sockaddr_in *src_addr, struct 
  * dst_addr: sockaddr_in struct containing destination address
  * len: length of packet
  *
- * returns: char pointer to packet
+ * returns: char pointer to packet if successful, NULL otherwise
  */
 char* create_syn_packet(struct sockaddr_in *src_addr, struct sockaddr_in *dst_addr, int len)
 {
