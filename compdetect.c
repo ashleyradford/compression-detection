@@ -200,7 +200,7 @@ int send_high_entropy_train(int raw_sock, char *head_syn_packet, struct sockaddr
 
     // send tail SYN packet
     // print_packet(tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
-    // send_packet(raw_sock, tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN, tail_serv_addr);
+    send_packet(raw_sock, tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN, tail_serv_addr);
     LOGP("High entropy tail syn sent.\n");
 
     return 1;
