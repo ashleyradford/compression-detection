@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * 
+ * Client application that detects compression in a cooperative environment.
  */
 
 #include <stdio.h>
@@ -28,9 +28,14 @@ struct client_config {
     int udp_ttl;
 };
 
+/**
+ * Parses JSON file for client specific configurations
+ *
+ * configs: client_config struct to fill
+ * contents: json text to parse
+ */
 void parse_config(struct client_config *configs, char *contents)
 {
-    // parse json
     cJSON *root = cJSON_Parse(contents);
     configs->server_ip = cJSON_GetObjectItem(root, "server_ip")->valuestring;
     configs->udp_dest_port = atoi(cJSON_GetObjectItem(root, "udp_dest_port")->valuestring);
@@ -43,6 +48,14 @@ void parse_config(struct client_config *configs, char *contents)
     configs->udp_ttl = atoi(cJSON_GetObjectItem(root, "udp_ttl")->valuestring);
 }
 
+/**
+ * Pre-probing phase of compression detection. Establishes a
+ * TCP connection and sends over file contents.
+ *
+ * filename: file to read, parse, and send
+ *
+ * returns: client_config struct parsed from filename
+ */
 struct client_config* pre_probing(char *filename)
 {
     struct stat buf;
@@ -85,6 +98,15 @@ struct client_config* pre_probing(char *filename)
     return configs;
 }
 
+/**
+ * Probing phase of compression detection. Sends two sets of
+ * UDP packets back to back, one with low entropy and one with
+ * high entropy.
+ *
+ * configs: pointer to client_config struct
+ *
+ * returns: 1 if successful, -1 otherwise
+ */
 int probing(struct client_config *configs)
 {
     int udp_sock;
@@ -96,12 +118,10 @@ int probing(struct client_config *configs)
     if (set_df_opt(udp_sock) < 0) {
         return -1;
     }
-
     // add TTL opt
     if (add_ttl_opt(udp_sock, configs->udp_ttl) < 0) {
         return -1;
     }
-
     // bind to specified port
     struct sockaddr_in *my_addr_udp = set_addr_struct(INADDR_ANY, configs->udp_source_port);
     if (bind_port(udp_sock, my_addr_udp) < 0) {
@@ -154,6 +174,14 @@ int probing(struct client_config *configs)
     return 1;
 }
 
+/**
+ * Post-probing phase of compression detection. Establishes a
+ * TCP connection and receives compression status from server.
+ *
+ * configs: pointer to client_config struct
+ *
+ * returns: 1 if successful, -1 otherwise
+ */
 int post_probing(struct client_config *configs)
 {
     // create socket and establish connection

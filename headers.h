@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * Contains ip and tcp header functions
+ * Defines ip and tcp header helper functions.
  */
 
 #ifndef _HEADERS_H_

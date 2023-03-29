@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * 
+ * Contains ip and tcp header helper functions.
  */
 
 #include <stdio.h>
@@ -25,7 +25,16 @@ struct pseudo_header {
     uint16_t tcp_length;
 };
 
-// source: https://github.com/MaxXor/raw-sockets-example
+/**
+ * Calculates IP/TCP header checksums
+ *
+ * buf: bytes to checksum
+ * size: size of bytes to checksum
+ *
+ * returns: header checksum
+ *
+ * source: https://github.com/MaxXor/raw-sockets-example
+ */
 uint16_t checksum(const char *buf, uint32_t size)
 {
     uint32_t sum = 0, i;
@@ -49,6 +58,13 @@ uint16_t checksum(const char *buf, uint32_t size)
     return ~sum;
 }
 
+/**
+ * Fills in IP header for raw socket
+ *
+ * iphdr: ip struct to fill
+ * src_addr: sockaddr_in struct containing source ip address
+ * dst_addr: sockaddr_in struct containing source destination address
+ */
 void fill_in_iphdr(struct ip* iphdr, struct sockaddr_in *src_addr, struct sockaddr_in *dst_addr)
 {
     iphdr->ip_v = 4;                                 // version (4 bits)
@@ -78,6 +94,13 @@ void fill_in_iphdr(struct ip* iphdr, struct sockaddr_in *src_addr, struct sockad
     LOGP("Successfully filled in IP header (with 0 checksum).\n");
 }
 
+/**
+ * Fills in TCP header for raw socket
+ *
+ * tcphdr: tcphdr struct to fill
+ * src_addr: sockaddr_in struct containing source ip port
+ * dst_addr: sockaddr_in struct containing source destination port
+ */
 void fill_in_tcphdr(struct tcphdr* tcphdr, struct sockaddr_in *src_addr, struct sockaddr_in *dst_addr)
 {
     tcphdr->th_sport = src_addr->sin_port;          // source port (16 bits)
@@ -110,10 +133,17 @@ void fill_in_tcphdr(struct tcphdr* tcphdr, struct sockaddr_in *src_addr, struct 
     LOGP("Successfully filled in TCP header (with 0 checksum).\n");
 }
 
-// Create a pseudo-header by combining the source IP address, destination
-// IP address, protocol number (6 for TCP), and the TCP segment length. 
-// The TCP segment length is the length of the TCP header and data in bytes.
-// We have no data, so for us it will just be the TCP header.
+/**
+ * Creates a SYN packet by filling in both IP and TCP headers, and creates
+ * a pseudo-header for the TCP checksum. Note: packet is constructed to not
+ * have a payload. Length is intended to be 40 bytes.
+ *
+ * src_addr: sockaddr_in struct containing source address
+ * dst_addr: sockaddr_in struct containing destination address
+ * len: length of packet
+ *
+ * returns: char pointer to packet
+ */
 char* create_syn_packet(struct sockaddr_in *src_addr, struct sockaddr_in *dst_addr, int len)
 {
     // datagram to represent the packet

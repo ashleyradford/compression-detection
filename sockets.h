@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * Contains tcp, udp, and raw socket functions
+ * Defines tcp, udp, and raw socket helper functions.
  */
 
 #ifndef _SOCKETS_H_

@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * 
+ * Server application that detects compression in a cooperative environment.
  */
 
 #include <stdio.h>
@@ -28,9 +28,14 @@ struct server_config {
     int threshold;
 };
 
+/**
+ * Parses JSON file for server specific configurations
+ *
+ * configs: server_config struct to fill
+ * contents: json text to parse
+ */
 void parse_config(struct server_config *configs, char *contents)
 {
-    // parse json
     cJSON *root = cJSON_Parse(contents);
     configs->udp_dest_port = atoi(cJSON_GetObjectItem(root, "udp_dest_port")->valuestring);
     configs->udp_train_size = atoi(cJSON_GetObjectItem(root, "udp_train_size")->valuestring);
@@ -38,6 +43,14 @@ void parse_config(struct server_config *configs, char *contents)
     configs->threshold = atoi(cJSON_GetObjectItem(root, "threshold")->valuestring);
 }
 
+/**
+ * Pre-probing phase of compression detection. Accepts a
+ * TCP connection and receives configuration data.
+ *
+ * listen_port: port to listen on 
+ *
+ * returns: server_config struct parsed from received data
+ */
 struct server_config* pre_probing(uint16_t listen_port)
 {
     // bind port and accept client connection
@@ -79,6 +92,15 @@ struct server_config* pre_probing(uint16_t listen_port)
     return configs;
 }
 
+/**
+ * Probing phase of compression detection. Receives two sets of
+ * UDP packets back to back, one with low entropy and one with
+ * high entropy.
+ *
+ * configs: pointer to server_config struct
+ *
+ * returns: compression results if successful, NULL otherwise
+ */
 char* probing(struct server_config *configs)
 {
     int udp_sock;
@@ -187,6 +209,15 @@ char* probing(struct server_config *configs)
     return result;
 }
 
+/**
+ * Post-probing phase of compression detection. Accepts a
+ * TCP connection and sends compression status to client.
+ *
+ * listen_port: port to listen on
+ * msg: compression results
+ *
+ * returns: 1 if successful, -1 otherwise
+ */
 int post_probing(uint16_t listen_port, char *msg)
 {
     // bind port and accept client connection

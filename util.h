@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * Contains helper functions
+ * Defines compression detection helper functions.
  */
 
 #ifndef _UTIL_H_

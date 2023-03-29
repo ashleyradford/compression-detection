@@ -34,7 +34,8 @@
 // revert the changes
 // iptables --flush
 
-// README.md 
+// README.md
+// - how makefile works
 // - explain why no abs value, also why we dont use the TCP port
 // - talk about how grabbing udp packets might not be the most optimal,
 //   if we only get like 1000 to 2000, the timing could be off
