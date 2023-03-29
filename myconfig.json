@@ -9,7 +9,7 @@
     "udp_payload_size": "1000",
     "inter_measurement_time": "15",
     "udp_train_size": "6000",
-    "ttl": "113",
+    "udp_ttl": "225",
     "udp_timeout": "8",
     "rst_timeout": "60",
     "threshold": "100"

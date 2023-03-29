@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <netinet/in.h>
 
 #include "cJSON.h"
 #include "sockets.h"
@@ -10,6 +11,7 @@
 
 struct client_config {
     char* server_ip;
+    uint16_t udp_source_port;
     uint16_t udp_dest_port;
     uint16_t tcp_port;
     int udp_payload_size;
@@ -25,6 +27,7 @@ void parse_config(struct client_config *configs, char *contents)
     cJSON *root = cJSON_Parse(contents);
     configs->server_ip = cJSON_GetObjectItem(root, "server_ip")->valuestring;
     configs->udp_dest_port = atoi(cJSON_GetObjectItem(root, "udp_dest_port")->valuestring);
+    configs->udp_source_port = atoi(cJSON_GetObjectItem(root, "udp_source_port")->valuestring);
     configs->tcp_port = atoi(cJSON_GetObjectItem(root, "tcp_port")->valuestring);
     configs->udp_payload_size = atoi(cJSON_GetObjectItem(root, "udp_payload_size")->valuestring);
     configs->inter_measurement_time = atoi(cJSON_GetObjectItem(root, "inter_measurement_time")->valuestring);
@@ -93,9 +96,15 @@ int probing(struct client_config *configs)
         return -1;
     }
 
+    // bind to specified port
+    struct sockaddr_in *my_addr_udp = set_addr_struct(INADDR_ANY, configs->udp_source_port);
+    if (bind_port(sock, my_addr_udp) < 0) {
+        return -1;
+    }
+
     // set up addr struct
-    struct sockaddr_in *my_addr; 
-    if ((my_addr = set_addr_struct(configs->server_ip, configs->udp_dest_port)) == NULL) {
+    struct sockaddr_in *serv_addr; 
+    if ((serv_addr = set_addr_struct(configs->server_ip, configs->udp_dest_port)) == NULL) {
         return -1;
     }
 
@@ -107,7 +116,7 @@ int probing(struct client_config *configs)
             return -1;
         }
         // send low entropy packets
-        if (send_packet(sock, payload, configs->udp_payload_size, my_addr) < 0) {
+        if (send_packet(sock, payload, configs->udp_payload_size, serv_addr) < 0) {
             return -1;
         }
     }
@@ -122,7 +131,7 @@ int probing(struct client_config *configs)
             return -1;
         }
         // send high entropy packets
-        if (send_packet(sock, payload, configs->udp_payload_size, my_addr) < 0) {
+        if (send_packet(sock, payload, configs->udp_payload_size, serv_addr) < 0) {
             return -1;
         }
     }

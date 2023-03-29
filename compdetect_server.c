@@ -97,7 +97,7 @@ char* probing(struct server_config *configs)
     char* payload;
     bool begin = false;
 
-    uint16_t first_udp = 1, last_udp = 1;
+    uint16_t first_udp,last_udp = -1;
 
     // receive low entropy packets   
     for (int i = 0; i < configs->udp_train_size; i++) {
@@ -113,6 +113,7 @@ char* probing(struct server_config *configs)
             begin = true;
         }
         gettimeofday(&low_end, NULL);
+        // last_udp = payload[0] + payload[1];
     }
     LOG("First low entropy udp packet received: %d\n", first_udp);
     LOG("Last low udp packet received: %d\n", last_udp);

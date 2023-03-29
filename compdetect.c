@@ -23,6 +23,7 @@ struct config {
     char* server_ip;
     uint16_t tcp_head_dest;
     uint16_t tcp_tail_dest;
+    uint16_t udp_source_port;
     uint16_t udp_dest_port;
     int tcp_port;
     int udp_payload_size;
@@ -49,13 +50,14 @@ void parse_config(struct config *configs, char *contents)
     configs->tcp_port = atoi(cJSON_GetObjectItem(root, "tcp_port")->valuestring);
     configs->tcp_head_dest = atoi(cJSON_GetObjectItem(root, "tcp_head_dest")->valuestring);
     configs->tcp_tail_dest = atoi(cJSON_GetObjectItem(root, "tcp_tail_dest")->valuestring);
+    configs->udp_source_port = atoi(cJSON_GetObjectItem(root, "udp_source_port")->valuestring);
     configs->udp_dest_port = atoi(cJSON_GetObjectItem(root, "udp_dest_port")->valuestring);
     configs->udp_payload_size = atoi(cJSON_GetObjectItem(root, "udp_payload_size")->valuestring);
     configs->inter_measurement_time = atoi(cJSON_GetObjectItem(root, "inter_measurement_time")->valuestring);
     configs->udp_train_size = atoi(cJSON_GetObjectItem(root, "udp_train_size")->valuestring);
     configs->udp_timeout = atoi(cJSON_GetObjectItem(root, "udp_timeout")->valuestring);
     configs->rst_timeout = atoi(cJSON_GetObjectItem(root, "rst_timeout")->valuestring);
-    configs->udp_ttl = atoi(cJSON_GetObjectItem(root, "ttl")->valuestring);
+    configs->udp_ttl = atoi(cJSON_GetObjectItem(root, "udp_ttl")->valuestring);
     configs->threshold = atoi(cJSON_GetObjectItem(root, "threshold")->valuestring);
 }
 
@@ -137,8 +139,8 @@ int main(int argc, char *argv[])
     parse_config(configs, config_contents);
 
     // set up source addr struct
-    struct sockaddr_in *my_addr;
-    if ((my_addr = set_addr_struct(configs->client_ip, configs->tcp_port)) == NULL) {
+    struct sockaddr_in *my_addr_tcp;
+    if ((my_addr_tcp = set_addr_struct(configs->client_ip, configs->tcp_port)) == NULL) {
         return EXIT_FAILURE;
     }
 
@@ -174,7 +176,7 @@ int main(int argc, char *argv[])
     }
 
     // create syn packet
-    char* head_syn_packet = create_syn_packet(my_addr, head_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
+    char* head_syn_packet = create_syn_packet(my_addr_tcp, head_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
     if (head_syn_packet == NULL) {
         return EXIT_FAILURE;
     }
@@ -196,6 +198,12 @@ int main(int argc, char *argv[])
 
     // add TTL opt
     if (add_ttl_opt(udp_sock, configs->udp_ttl) < 0) {
+        return -1;
+    }
+
+    // bind to specified port
+    struct sockaddr_in *my_addr_udp = set_addr_struct(INADDR_ANY, configs->udp_source_port);
+    if (bind_port(udp_sock, my_addr_udp) < 0) {
         return -1;
     }
 
@@ -229,7 +237,7 @@ int main(int argc, char *argv[])
     }
 
     // create syn packet
-    char* tail_syn_packet = create_syn_packet(my_addr, tail_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
+    char* tail_syn_packet = create_syn_packet(my_addr_tcp, tail_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
     if (tail_syn_packet == NULL) {
         return EXIT_FAILURE;
     }

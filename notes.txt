@@ -36,9 +36,6 @@
 
 // QUESTIONS
 // 1. slide 36 in lecture 7, where to put this code?
-// 2. ask about MDNS and DCERPC protocols ~ it says those that are only triggered
-//    by my application, how can I know? And what about ARP?
-// 3. is this retransmission okay? is having os set udp ports okay?
 
 // TODO
 // - timeout for raw socket
