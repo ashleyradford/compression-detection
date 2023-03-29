@@ -17,7 +17,7 @@ A json configs file with the following keys:<br>
 - **inter_measurement_time:** time that the program will sleep in between sending packet trains
 - **udp_train_size:** size of the UDP packet trains
 - **udp_ttl:** UDP time to live value
-- **udp_timeout:** timeout for receiving UDP packets in the server application
+- **udp_timeout:** timeout for receiving UDP packets in the server application (must be shorter than the inter measurement time so as to not receive train 2 packets as train 1 packets, but not too short that the socket times out before the second train can be sent, around 3/5 the inter measurement time is good).
 - **rst_timeout:** timeout for receiving RST packets in the standalone application
 - **threshold:** compression detection threshold, times bigger than this value indicate compression
 
