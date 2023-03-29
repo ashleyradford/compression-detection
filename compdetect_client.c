@@ -16,6 +16,7 @@ struct client_config {
     int inter_measurement_time;
     int udp_train_size;
     int udp_timeout;
+    int udp_ttl;
 };
 
 void parse_config(struct client_config *configs, char *contents)
@@ -29,6 +30,7 @@ void parse_config(struct client_config *configs, char *contents)
     configs->inter_measurement_time = atoi(cJSON_GetObjectItem(root, "inter_measurement_time")->valuestring);
     configs->udp_train_size = atoi(cJSON_GetObjectItem(root, "udp_train_size")->valuestring);
     configs->udp_timeout = atoi(cJSON_GetObjectItem(root, "udp_timeout")->valuestring);
+    configs->udp_ttl = atoi(cJSON_GetObjectItem(root, "udp_ttl")->valuestring);
 }
 
 struct client_config* pre_probing(char *filename)
@@ -82,7 +84,12 @@ int probing(struct client_config *configs)
     }
 
     // set DF bit
-    if (set_df_bit(sock) < 0) {
+    if (set_df_opt(sock) < 0) {
+        return -1;
+    }
+
+    // add TTL opt
+    if (add_ttl_opt(sock, configs->udp_ttl) < 0) {
         return -1;
     }
 

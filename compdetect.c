@@ -30,7 +30,7 @@ struct config {
     int udp_train_size;
     int udp_timeout;
     int rst_timeout;
-    int ttl;
+    int udp_ttl;
     int threshold;
 };
 
@@ -55,7 +55,7 @@ void parse_config(struct config *configs, char *contents)
     configs->udp_train_size = atoi(cJSON_GetObjectItem(root, "udp_train_size")->valuestring);
     configs->udp_timeout = atoi(cJSON_GetObjectItem(root, "udp_timeout")->valuestring);
     configs->rst_timeout = atoi(cJSON_GetObjectItem(root, "rst_timeout")->valuestring);
-    configs->ttl = atoi(cJSON_GetObjectItem(root, "ttl")->valuestring);
+    configs->udp_ttl = atoi(cJSON_GetObjectItem(root, "ttl")->valuestring);
     configs->threshold = atoi(cJSON_GetObjectItem(root, "threshold")->valuestring);
 }
 
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
     }
 
     // create syn packet
-    char* head_syn_packet = create_syn_packet(my_addr, head_serv_addr, IP4_HDRLEN + TCP_HDRLEN, configs->ttl);
+    char* head_syn_packet = create_syn_packet(my_addr, head_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
     if (head_syn_packet == NULL) {
         return EXIT_FAILURE;
     }
@@ -190,7 +190,12 @@ int main(int argc, char *argv[])
     }
 
     // set DF bit
-    if (set_df_bit(udp_sock) < 0) {
+    if (set_df_opt(udp_sock) < 0) {
+        return -1;
+    }
+
+    // add TTL opt
+    if (add_ttl_opt(udp_sock, configs->udp_ttl) < 0) {
         return -1;
     }
 
@@ -224,7 +229,7 @@ int main(int argc, char *argv[])
     }
 
     // create syn packet
-    char* tail_syn_packet = create_syn_packet(my_addr, tail_serv_addr, IP4_HDRLEN + TCP_HDRLEN, configs->ttl);
+    char* tail_syn_packet = create_syn_packet(my_addr, tail_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
     if (tail_syn_packet == NULL) {
         return EXIT_FAILURE;
     }

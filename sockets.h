@@ -13,8 +13,9 @@
 
 struct sockaddr_in* set_addr_struct(char* ip, uint16_t port);
 int create_raw_socket();
-int add_timeout(int sockfd, int wait_time);
-int set_df_bit(int sockfd);
+int add_timeout_opt(int sockfd, int wait_time);
+int set_df_opt(int sockfd);
+int add_ttl_opt(int sockfd, int ttl);
 int create_tcp_socket();
 int establish_connection(int sockfd, char* server_ip, uint16_t server_port);
 int bind_and_listen(int sockfd, uint16_t port);

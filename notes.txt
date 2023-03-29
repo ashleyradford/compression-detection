@@ -37,18 +37,16 @@
 // QUESTIONS
 // 1. slide 36 in lecture 7, where to put this code?
 // 2. ask about MDNS and DCERPC protocols ~ it says those that are only triggered
-//    by my application, how can I know? ANd what about ARP?
-// 3. how come i get some IMCP messages but not others in part 2?
-// 4. raw sockets, what port to send udp packets
+//    by my application, how can I know? And what about ARP?
+// 3. is this retransmission okay? is having os set udp ports okay?
 
 // TODO
-// - fix TTL
-// - give default values for the 7 - 10!
 // - timeout for raw socket
-// - fix retransmisison
 // - make udp timeout a function of the inter measurement time
-// - set udp source port
+
 // - make sure id nums are in correct endianness
 // - also check for host in raw socket
-// - README.md (explain why no abs value)
+
+// - README.md (explain why no abs value, also why we dont use the UDP port)
+// - give default values for the 7 - 10!
 // - memory leaks

@@ -45,13 +45,6 @@ int create_raw_socket()
         return -1;
     }
 
-    // for the address already in use error
-    int yes = 1;
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1) {
-        perror("Cannot reuse port");
-        return -1;
-    }
-
     // set flag so socket expects our IPv4 header
     const int on = 1;
     if (setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0) {
@@ -62,7 +55,7 @@ int create_raw_socket()
     return sockfd;
 }
 
-int add_timeout(int sockfd, int wait_time)
+int add_timeout_opt(int sockfd, int wait_time)
 {
     struct timeval timeout;
     timeout.tv_sec = wait_time;
@@ -75,11 +68,21 @@ int add_timeout(int sockfd, int wait_time)
     return sockfd;
 }
 
-int set_df_bit(int sockfd)
+int set_df_opt(int sockfd)
 {
     int df = IP_PMTUDISC_DO; // sets DF bit
     if (setsockopt(sockfd, SOL_SOCKET, IP_MTU_DISCOVER, &df, sizeof df) == -1) {
         perror("Cannot set MTU discovery");
+        return -1;
+    }
+
+    return sockfd;
+}
+
+int add_ttl_opt(int sockfd, int ttl)
+{
+    if (setsockopt(sockfd, SOL_SOCKET, IP_TTL, &ttl, sizeof ttl) == -1) {
+        perror("Cannot set TTL");
         return -1;
     }
 

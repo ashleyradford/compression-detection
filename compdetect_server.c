@@ -80,7 +80,7 @@ char* probing(struct server_config *configs)
     }
 
     // add timeout
-    if (add_timeout(sock, configs->udp_timeout) < 0) {
+    if (add_timeout_opt(sock, configs->udp_timeout) < 0) {
         return NULL;
     }
 
@@ -97,6 +97,8 @@ char* probing(struct server_config *configs)
     char* payload;
     bool begin = false;
 
+    uint16_t first_udp = 1, last_udp = 1;
+
     // receive low entropy packets   
     for (int i = 0; i < configs->udp_train_size; i++) {
         if ((payload = receive_packet(sock, recv_addr)) == NULL) {
@@ -107,10 +109,13 @@ char* probing(struct server_config *configs)
         }
         if (!begin) {
             gettimeofday(&low_start, NULL);
+            first_udp = payload[0] + payload[1];
             begin = true;
         }
         gettimeofday(&low_end, NULL);
     }
+    LOG("First low entropy udp packet received: %d\n", first_udp);
+    LOG("Last low udp packet received: %d\n", last_udp);
     LOGP("First train received.\n");
 
     // receive high entropy packets
@@ -128,6 +133,8 @@ char* probing(struct server_config *configs)
         }
         gettimeofday(&high_end, NULL);
     }
+    LOG("First high udp packet received: %d\n", first_udp);
+    LOG("Last high udp packet received: %d\n", last_udp);
     LOGP("Second train received.\n");
 
     // compression detection calculations
