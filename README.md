@@ -17,7 +17,7 @@ A json configs file with the following keys:<br>
 - **inter_measurement_time:** time that the program will sleep in between sending packet trains
 - **udp_train_size:** size of the UDP packet trains
 - **udp_ttl:** UDP time to live value
-- **udp_timeout:** timeout for receicing UDP packers in the server application
+- **udp_timeout:** timeout for receiving UDP packets in the server application
 - **rst_timeout:** timeout for receiving RST packets in the standalone application
 - **threshold:** compression detection threshold, times bigger than this value indicate compression
 
@@ -47,8 +47,23 @@ sudo ./bin/compdetect port
 ```
 
 ## Design Decisions
+**Client TCP source port:** in the client and server application, the OS decides on the TCP port for the client's TCP connection request. All other ports are decided by what is defined in the configuration file.
+
+**Compression detection:** when checking for compression using the delta times for low and high entropy trains, the server only checks if the *high entropy delta - low entropy delta > threshold*. The absolute value is not considered here because if the low entropy time is greater than the high entropy time, then there must not be compression anyways.
+
+**Receiving UDP packets:** when receiving UDP packets in the client and server application, the server does not currently check what percentage or range of UDP packets it has received. It is able to parse the UDP packet ids, however, after receiving the packets the server moves on to the compression calculations. This may not be optimal in the cases where only a small range of UDP packets were received. For example, if we only received packets 1000 - 2000 for the low entropy but packets 1000 - 6000 for the high entropy packets, this will not be an accurate comparison of delta times.
+
+**Receiving RST packets:** when receiving RST packets in the standalone application, we are assuming that the head and tail RST packets arrive in order and thus we are not checking the port numbers of the packets. It would be better design to check the port numbers in case of delayed responses.
+
+**RST timeout:** since this is a raw socket, a normal socket timeout option for RST packets will not work here since we are receiving packets other than RST packets. As a result, once the program begins receiving packets in its receive thread, it continuously checks to see if its timer has passed the defined RST timeout range. Every time a new RST packet comes in (for a total of 4 RST packets), the timer is reset.
 
 ## Future Work
+Instead of relying on the user to give a proper UDP timeout value in the configuration file, make this timeout a function of the inter measurement time.
+
+Memory leaks have not been extensively checked and when the program fails, the memory is not freed on error.<br>
+Need to ensure that all memory is freed.
+
+Need to check that all `perror` calls are in response to the most recent errno.
 
 ## Resources
 [Beej's Guide to Network Programming](https://beej.us/guide/bgnet/html/split/)<br>
