@@ -34,16 +34,17 @@
 // revert the changes
 // iptables --flush
 
-// QUESTIONS
-// 1. slide 36 in lecture 7, where to put this code?
-
 // TODO
 // - timeout for raw socket
+// - bang (!) hides protocols, analyze, enable protocols and then uncheck weirdos
+
+// README.md 
+// - explain why no abs value, also why we dont use the TCP port
+// - talk about how grabbing udp packets might not be the most optimal,
+//   if we only get like 1000 to 2000, the timing could be off
+// - also how we are assuming head and tail are coming in order,
+//   but should really check the port
+// - also talk about how I am not checking for ports or if it matches
+// - memory leaks ~ not freeing on errors
 // - make udp timeout a function of the inter measurement time
-
-// - make sure id nums are in correct endianness
-// - also check for host in raw socket
-
-// - README.md (explain why no abs value, also why we dont use the UDP port)
 // - give default values for the 7 - 10!
-// - memory leaks

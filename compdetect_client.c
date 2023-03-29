@@ -55,23 +55,22 @@ struct client_config* pre_probing(char *filename)
     parse_config(configs, config_contents);
 
     // create socket and establish connection
-    int sockfd;
-    if ((sockfd = create_tcp_socket()) < 0) {
+    int tcp_sock;
+    if ((tcp_sock = create_tcp_socket()) < 0) {
         return NULL;
     }
-
-    if ((sockfd = establish_connection(sockfd, configs->server_ip, configs->tcp_port)) < 0) {
+    if ((tcp_sock = establish_connection(tcp_sock, configs->server_ip, configs->tcp_port)) < 0) {
         return NULL;
     }
 
     // send config data
-    if (send_stream(sockfd, config_contents) < 0) {
+    if (send_stream(tcp_sock, config_contents) < 0) {
         return NULL;
     }
     
     LOGP("Config contents sent, closing TCP connection.\n");
-    if (close(sockfd) < 0) {
-        perror("Error closing socket");
+    if (close(tcp_sock) < 0) {
+        perror("Error closing tcp socket");
         return NULL;
     }
     free(config_contents);
@@ -81,24 +80,24 @@ struct client_config* pre_probing(char *filename)
 
 int probing(struct client_config *configs)
 {
-    int sock;
-    if ((sock = create_udp_socket()) < 0) {
+    int udp_sock;
+    if ((udp_sock = create_udp_socket()) < 0) {
         return -1;
     }
 
     // set DF bit
-    if (set_df_opt(sock) < 0) {
+    if (set_df_opt(udp_sock) < 0) {
         return -1;
     }
 
     // add TTL opt
-    if (add_ttl_opt(sock, configs->udp_ttl) < 0) {
+    if (add_ttl_opt(udp_sock, configs->udp_ttl) < 0) {
         return -1;
     }
 
     // bind to specified port
     struct sockaddr_in *my_addr_udp = set_addr_struct(INADDR_ANY, configs->udp_source_port);
-    if (bind_port(sock, my_addr_udp) < 0) {
+    if (bind_port(udp_sock, my_addr_udp) < 0) {
         return -1;
     }
 
@@ -116,7 +115,7 @@ int probing(struct client_config *configs)
             return -1;
         }
         // send low entropy packets
-        if (send_packet(sock, payload, configs->udp_payload_size, serv_addr) < 0) {
+        if (send_packet(udp_sock, payload, configs->udp_payload_size, serv_addr) < 0) {
             return -1;
         }
     }
@@ -131,7 +130,7 @@ int probing(struct client_config *configs)
             return -1;
         }
         // send high entropy packets
-        if (send_packet(sock, payload, configs->udp_payload_size, serv_addr) < 0) {
+        if (send_packet(udp_sock, payload, configs->udp_payload_size, serv_addr) < 0) {
             return -1;
         }
     }
@@ -139,31 +138,37 @@ int probing(struct client_config *configs)
     LOGP("Second train sent.\n");
     free(payload);
 
+    // close socket
+    if (close(udp_sock) < 0) {
+        perror("Error closing udp socket");
+        return -1;
+    }
+
     return 1;
 }
 
 int post_probing(struct client_config *configs)
 {
     // create socket and establish connection
-    int sockfd;
-    if ((sockfd = create_tcp_socket()) < 0) {
+    int tcp_sock;
+    if ((tcp_sock = create_tcp_socket()) < 0) {
         return -1;
     }
 
-    if ((sockfd = establish_connection(sockfd, configs->server_ip, configs->tcp_port)) < 0) {
+    if ((tcp_sock = establish_connection(tcp_sock, configs->server_ip, configs->tcp_port)) < 0) {
         return -1;
     }
 
     // receive compression detection results
     char *msg;
-    if ((msg = receive_stream(sockfd)) == NULL) {
+    if ((msg = receive_stream(tcp_sock)) == NULL) {
         return -1;
     }
     printf("%s\n", msg);
     free(msg);
 
     // close socket
-    if (close(sockfd) < 0) {
+    if (close(tcp_sock) < 0) {
         perror("Error closing socket");
         return -1;
     }

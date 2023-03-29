@@ -111,7 +111,6 @@ int create_tcp_socket()
 int establish_connection(int sockfd, char* server_ip, uint16_t server_port)
 {
     // setting up addr struct
-
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
 
@@ -135,15 +134,15 @@ int establish_connection(int sockfd, char* server_ip, uint16_t server_port)
 int bind_and_listen(int sockfd, uint16_t port)
 {
     // setting up addr struct
-    struct sockaddr_in my_addr;
-    memset(&my_addr, 0, sizeof(my_addr));
+    struct sockaddr_in sin;
+    memset(&sin, 0, sizeof(sin));
 
-    my_addr.sin_family = AF_INET;
-    my_addr.sin_addr.s_addr = INADDR_ANY; // binds local IP address
-    my_addr.sin_port = htons(port);
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = INADDR_ANY; // binds local IP address
+    sin.sin_port = htons(port);
 
     // binding socket to address
-    if (bind(sockfd, (struct sockaddr *) &my_addr, sizeof(my_addr)) < 0) {
+    if (bind(sockfd, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
         perror("Error binding socket to address");
         return -1;
     }
@@ -153,7 +152,7 @@ int bind_and_listen(int sockfd, uint16_t port)
         perror("Error listening for client");
         return -1;
     }
-    LOG("Listening for connections on port %d\n", ntohs(my_addr.sin_port));
+    LOG("Listening for connections on port %d\n", ntohs(sin.sin_port));
 
     return 1;
 }
@@ -215,14 +214,14 @@ int create_udp_socket()
     return sockfd;
 }
 
-int bind_port(int sockfd, struct sockaddr_in *addr_in)
+int bind_port(int sockfd, struct sockaddr_in *sin)
 {
     // binding socket to address
-    if (bind(sockfd, (struct sockaddr *) addr_in, sizeof(struct sockaddr_in)) < 0) {
+    if (bind(sockfd, (struct sockaddr *) sin , sizeof(struct sockaddr)) < 0) {
         perror("Error binding socket to address");
         return -1;
     }
-    LOG("Binded to port %d for incoming UDP packets.\n", ntohs(addr_in->sin_port));
+    LOG("Binded to port %d for incoming UDP packets.\n", ntohs(sin->sin_port));
 
     return 1;
 }
@@ -269,4 +268,3 @@ char* receive_packet(int sockfd, struct sockaddr_in *sin)
 
     return buf;
 }
-

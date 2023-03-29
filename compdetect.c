@@ -82,7 +82,7 @@ void* receive_routine(void *arg)
         // check if we received RST packet
         char tcp_flags = buf[33];
         if (tcp_flags & (1 << 2)) {
-            LOGP("RST packet received.\n"); // ALSO CHECK PORT and ADDR ??
+            LOGP("RST packet received.\n");
             if (!tail) {
                 if (!high_e_train) {
                     gettimeofday(&low_e_head, NULL);
@@ -112,6 +112,72 @@ void* receive_routine(void *arg)
     return NULL;
 }
 
+int send_low_entropy_train(int raw_sock, char *head_syn_packet, struct sockaddr_in *head_serv_addr,     
+                            int udp_sock, struct sockaddr_in *udp_serv_addr, struct config *configs,
+                            char *tail_syn_packet, struct sockaddr_in *tail_serv_addr)
+{
+    // send head SYN packet
+    // print_packet(head_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
+    send_packet(raw_sock, head_syn_packet, IP4_HDRLEN + TCP_HDRLEN, head_serv_addr);
+    LOGP("Low entropy head syn sent.\n");
+
+    // send low entropy UDP packet train
+    char *payload;
+    for (int i = 0; i < configs->udp_train_size; i++) {
+        payload = create_low_entropy_payload(i, configs->udp_payload_size);
+        if (payload == NULL) {
+            return -1;
+        }
+        // send low entropy packets
+        if (send_packet(udp_sock, payload, configs->udp_payload_size, udp_serv_addr) < 0) {
+            return -1;
+        }
+    }
+
+    LOGP("Low entropy train sent.\n");
+    free(payload);
+
+    // send tail SYN packet
+    // print_packet(tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
+    send_packet(raw_sock, tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN, tail_serv_addr);
+    LOGP("Low entropy tail syn sent.\n");
+
+    return 1;
+}
+
+int send_high_entropy_train(int raw_sock, char *head_syn_packet, struct sockaddr_in *head_serv_addr,     
+                            int udp_sock, struct sockaddr_in *udp_serv_addr, struct config *configs,
+                            char *tail_syn_packet, struct sockaddr_in *tail_serv_addr)
+{
+    // send head SYN packet
+    // print_packet(head_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
+    send_packet(raw_sock, head_syn_packet, IP4_HDRLEN + TCP_HDRLEN, head_serv_addr);
+    LOGP("High entropy head syn sent.\n");
+
+    // send high UDP packet train
+    char *payload;
+    for (int i = 0; i < configs->udp_train_size; i++) {
+        payload = create_high_entropy_payload(i, configs->udp_payload_size);
+        if (payload == NULL) {
+            return -1;
+        }
+        // send low entropy packets
+        if (send_packet(udp_sock, payload, configs->udp_payload_size, udp_serv_addr) < 0) {
+            return -1;
+        }
+    }
+
+    LOGP("High entropy train sent.\n");
+    free(payload);
+
+    // send tail SYN packet
+    // print_packet(tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
+    send_packet(raw_sock, tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN, tail_serv_addr);
+    LOGP("High entropy tail syn sent.\n");
+
+    return 1;
+}
+
 int main(int argc, char *argv[])
 {
     // check that config file is provided
@@ -138,22 +204,78 @@ int main(int argc, char *argv[])
     struct config *configs = malloc(sizeof(struct config));
     parse_config(configs, config_contents);
 
-    // set up source addr struct
-    struct sockaddr_in *my_addr_tcp;
-    if ((my_addr_tcp = set_addr_struct(configs->client_ip, configs->tcp_port)) == NULL) {
+    free(config_contents);
+
+    // -------- create address structs --------
+    // addr struct for my tcp port
+    struct sockaddr_in *my_tcp_addr;
+    if ((my_tcp_addr = set_addr_struct(configs->client_ip, configs->tcp_port)) == NULL) {
         return EXIT_FAILURE;
     }
 
+    // addr struct for my udp port
+    struct sockaddr_in *my_udp_addr;
+    if ((my_udp_addr = set_addr_struct(INADDR_ANY, configs->udp_source_port)) == NULL) {
+        return EXIT_FAILURE;
+    }
+
+    // addr struct for tcp server port
+    struct sockaddr_in *head_serv_addr;
+    if ((head_serv_addr = set_addr_struct(configs->server_ip, configs->tcp_head_dest)) == NULL) {
+        return EXIT_FAILURE;
+    }
+
+    // addr struct for udp server port
+    struct sockaddr_in *udp_serv_addr; 
+    if ((udp_serv_addr = set_addr_struct(configs->server_ip, configs->udp_dest_port)) == NULL) {
+        return EXIT_FAILURE;
+    }
+
+    // addr struct for tcp server port
+    struct sockaddr_in *tail_serv_addr;
+    if ((tail_serv_addr = set_addr_struct(configs->server_ip, configs->tcp_tail_dest)) == NULL) {
+        return EXIT_FAILURE;
+    }
+
+    // -------- create sockets --------
     // create raw socket
     int raw_sock;
     if ((raw_sock = create_raw_socket()) < 0) {
         return EXIT_FAILURE;
     }
 
-    // add timeout
-    // if (add_timeout(raw_sock configs->rst_timeout) < 0) {
-    //     return EXIT_FAILURE;
-    // }
+    // create udp socket
+    int udp_sock;
+    if ((udp_sock = create_udp_socket()) < 0) {
+        return EXIT_FAILURE;
+    }
+
+    // set DF bit
+    if (set_df_opt(udp_sock) < 0) {
+        return EXIT_FAILURE;
+    }
+    // add TTL opt
+    if (add_ttl_opt(udp_sock, configs->udp_ttl) < 0) {
+        return EXIT_FAILURE;
+    }
+    // bind to specified port
+    if (bind_port(udp_sock, my_udp_addr) < 0) {
+        return EXIT_FAILURE;
+    }
+
+    // -------- create syn packets --------
+    char* head_syn_packet = create_syn_packet(my_tcp_addr, head_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
+    if (head_syn_packet == NULL) {
+        return EXIT_FAILURE;
+    }
+
+    char* tail_syn_packet = create_syn_packet(my_tcp_addr, tail_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
+    if (tail_syn_packet == NULL) {
+        return EXIT_FAILURE;
+    }
+
+    // -------- start receive thread --------
+    pthread_t receive_thread;
 
     // set up thread data
     struct thread_data *tdata = malloc(sizeof(struct thread_data));
@@ -161,120 +283,36 @@ int main(int argc, char *argv[])
     struct sockaddr_in *recv_addr = malloc(sizeof(struct sockaddr));
     memset(recv_addr, 0, sizeof(struct sockaddr));
     tdata->recv_addr = recv_addr;
-    pthread_t receive_thread;
-
-    // start receive thread
+    
     if (pthread_create(&receive_thread, NULL, receive_routine, (void *) tdata) < 0) {
         perror("Error creating receive thread");
         return EXIT_FAILURE;
     }
 
-    // -------- send head SYN packet --------
-    struct sockaddr_in *head_serv_addr; // set up addr struct for head port
-    if ((head_serv_addr = set_addr_struct(configs->server_ip, configs->tcp_head_dest)) == NULL) {
+    // -------- send entropy trains --------
+    if (send_low_entropy_train(raw_sock, head_syn_packet, head_serv_addr,
+                                udp_sock, udp_serv_addr, configs,
+                                tail_syn_packet, tail_serv_addr) < 0) {
         return EXIT_FAILURE;
     }
 
-    // create syn packet
-    char* head_syn_packet = create_syn_packet(my_addr_tcp, head_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
-    if (head_syn_packet == NULL) {
-        return EXIT_FAILURE;
-    }
-    
-    // print_packet(head_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
-    send_packet(raw_sock, head_syn_packet, IP4_HDRLEN + TCP_HDRLEN, head_serv_addr);
-    LOGP("Sent low entropy head syn packet.\n");
-
-    // ------ send low UDP packet train ------
-    int udp_sock;
-    if ((udp_sock = create_udp_socket()) < 0) {
-        return -1;
-    }
-
-    // set DF bit
-    if (set_df_opt(udp_sock) < 0) {
-        return -1;
-    }
-
-    // add TTL opt
-    if (add_ttl_opt(udp_sock, configs->udp_ttl) < 0) {
-        return -1;
-    }
-
-    // bind to specified port
-    struct sockaddr_in *my_addr_udp = set_addr_struct(INADDR_ANY, configs->udp_source_port);
-    if (bind_port(udp_sock, my_addr_udp) < 0) {
-        return -1;
-    }
-
-    // set up addr struct
-    struct sockaddr_in *udp_serv_addr; 
-    if ((udp_serv_addr = set_addr_struct(configs->server_ip, configs->udp_dest_port)) == NULL) {
-        return -1;
-    }
-
-    // low entropy train
-    char *payload;
-    for (int i = 0; i < configs->udp_train_size; i++) {
-        payload = create_low_entropy_payload(i, configs->udp_payload_size);
-        if (payload == NULL) {
-            return -1;
-        }
-        // send low entropy packets
-        if (send_packet(udp_sock, payload, configs->udp_payload_size, udp_serv_addr) < 0) {
-            return -1;
-        }
-    }
-
-    LOGP("First train sent.\n");
-
-    free(payload);
-
-    // -------- send tail SYN packet --------
-    struct sockaddr_in *tail_serv_addr; // set up addr struct for tail port
-    if ((tail_serv_addr = set_addr_struct(configs->server_ip, configs->tcp_tail_dest)) == NULL) {
-        return EXIT_FAILURE;
-    }
-
-    // create syn packet
-    char* tail_syn_packet = create_syn_packet(my_addr_tcp, tail_serv_addr, IP4_HDRLEN + TCP_HDRLEN);
-    if (tail_syn_packet == NULL) {
-        return EXIT_FAILURE;
-    }
-
-    // print_packet(tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
-    send_packet(raw_sock, tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN, tail_serv_addr);
     LOG("Sent low entropy tail syn packet. Sleeping for %ds.\n", configs->inter_measurement_time);
     sleep(configs->inter_measurement_time);
 
-    // ~~~~~~~~~ High Entropy train ~~~~~~~~~~~
-    // -------- send head SYN packet --------
-    send_packet(raw_sock, head_syn_packet, IP4_HDRLEN + TCP_HDRLEN, head_serv_addr);
-    LOGP("Sent high entropy head syn packet.\n");
-
-    // ------ send high UDP packet train ------
-    for (int i = 0; i < configs->udp_train_size; i++) {
-        payload = create_high_entropy_payload(i, configs->udp_payload_size);
-        if (payload == NULL) {
-            return -1;
-        }
-        // send low entropy packets
-        if (send_packet(udp_sock, payload, configs->udp_payload_size, udp_serv_addr) < 0) {
-            return -1;
-        }
+    if (send_high_entropy_train(raw_sock, head_syn_packet, head_serv_addr,
+                                    udp_sock, udp_serv_addr, configs,
+                                    tail_syn_packet, tail_serv_addr) < 0) {
+        return EXIT_FAILURE;
     }
 
-    // -------- send tail SYN packet --------
-    send_packet(raw_sock, tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN, tail_serv_addr);
-    LOG("Sent low entropy tail syn packet. Sleeping for %ds.\n", configs->inter_measurement_time);
-
+    // ------- join thread and receive results -------
     void* status;
     if (pthread_join(receive_thread, &status) < 0) {
         perror("Error joining thread");
         return EXIT_FAILURE;
     }
 
-    // // check thread status
+    // check thread status
     // if (status < 0) {
     //     return EXIT_FAILURE;
     // }
@@ -286,21 +324,21 @@ int main(int argc, char *argv[])
         printf("No compression detected.\n");
     }
 
-    // send head syn
-    // send low entropy train
-    // send tail syn 
-    // free packet and close socket
-    // sleep intermeasurement after
-    // send head syn
-    // send high entropy train
-    // send tail syn
-    // compare results to detect compression
-
     // free memory
-    free(tdata);
-    free(recv_addr);
+    free(configs);
     free(head_syn_packet);
     free(tail_syn_packet);
+
+    // free addr structs
+    free(my_tcp_addr);
+    free(my_udp_addr);
+    free(head_serv_addr);
+    free(udp_serv_addr);
+    free(tail_serv_addr);
+
+    // free thread data
+    free(recv_addr);
+    free(tdata);
 
     // close sockets
     if (close(raw_sock) < 0) {

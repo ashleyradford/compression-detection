@@ -34,33 +34,33 @@ void parse_config(struct server_config *configs, char *contents)
 struct server_config* pre_probing(uint16_t listen_port)
 {
     // bind port and accept client connection
-    int sock;
-    if ((sock = create_tcp_socket()) < 0) {
+    int tcp_sock;
+    if ((tcp_sock = create_tcp_socket()) < 0) {
         return NULL;
     }
 
-    if (bind_and_listen(sock, listen_port) < 0) {
+    if (bind_and_listen(tcp_sock, listen_port) < 0) {
         return NULL;
     }
     
-    int new_sock;
-    if ((new_sock = accept_connection(sock)) < 0) {
+    int client_sock;
+    if ((client_sock = accept_connection(tcp_sock)) < 0) {
         return NULL;
     }
 
     // receive message
     char *config_contents;
-    if ((config_contents = receive_stream(new_sock)) == NULL) {
+    if ((config_contents = receive_stream(client_sock)) == NULL) {
         return NULL;
     }
 
     LOGP("Config contents received, closing TCP connection.\n");
-    if (close(sock) < 0) {
-        perror("Error closing socket");
+    if (close(tcp_sock) < 0) {
+        perror("Error closing tcp socket");
         return NULL;
     }
-    if (close(new_sock) < 0) {
-        perror("Error closing socket");
+    if (close(client_sock) < 0) {
+        perror("Error closing client socket");
         return NULL;
     }
 
@@ -74,19 +74,19 @@ struct server_config* pre_probing(uint16_t listen_port)
 
 char* probing(struct server_config *configs)
 {
-    int sock;
-    if ((sock = create_udp_socket()) < 0) {
+    int udp_sock;
+    if ((udp_sock = create_udp_socket()) < 0) {
         return NULL;
     }
 
     // add timeout
-    if (add_timeout_opt(sock, configs->udp_timeout) < 0) {
+    if (add_timeout_opt(udp_sock, configs->udp_timeout) < 0) {
         return NULL;
     }
 
     // set up addr struct and bind port
     struct sockaddr_in *my_addr = set_addr_struct(INADDR_ANY, configs->udp_dest_port);
-    if (bind_port(sock, my_addr) < 0) {
+    if (bind_port(udp_sock, my_addr) < 0) {
         return NULL;
     }
 
@@ -95,47 +95,59 @@ char* probing(struct server_config *configs)
     memset(recv_addr, 0, sizeof(struct sockaddr));
     struct timeval low_start, low_end, high_start, high_end;
     char* payload;
+
+    // receive low entropy packets
+    uint16_t first_low_udp = 0;
+    uint16_t last_low_udp = 0;
     bool begin = false;
 
-    uint16_t first_udp,last_udp = -1;
-
-    // receive low entropy packets   
     for (int i = 0; i < configs->udp_train_size; i++) {
-        if ((payload = receive_packet(sock, recv_addr)) == NULL) {
+        if ((payload = receive_packet(udp_sock, recv_addr)) == NULL) {
             if (errno == 11) { // EAGAIN
+                LOGP("Low entropy timeout.\n");
                 break;
             }
             return NULL;
         }
+        // receive first low entropy packet
         if (!begin) {
             gettimeofday(&low_start, NULL);
-            first_udp = payload[0] + payload[1];
+            first_low_udp = payload[0] << 8 | payload[1];
             begin = true;
         }
         gettimeofday(&low_end, NULL);
-        // last_udp = payload[0] + payload[1];
+        last_low_udp = payload[0] << 8 | payload[1];
     }
-    LOG("First low entropy udp packet received: %d\n", first_udp);
-    LOG("Last low udp packet received: %d\n", last_udp);
+
+    LOG("First low udp id: %d\n", first_low_udp);
+    LOG("Last low udp id: %d\n", last_low_udp);
     LOGP("First train received.\n");
 
     // receive high entropy packets
+    uint16_t first_high_udp = 0; 
+    uint16_t last_high_udp = 0;
     begin = false;
+    
     for (int i = 0; i < configs->udp_train_size; i++) {
-        if ((payload = receive_packet(sock, recv_addr)) == NULL) {
+        if ((payload = receive_packet(udp_sock, recv_addr)) == NULL) {
             if (errno == 11) { // EAGAIN
+                LOGP("High entropy timeout.\n");
                 break;
             }
             return NULL;
         }
+        // receive first high entropy packet
         if (!begin) {
             gettimeofday(&high_start, NULL);
+            first_high_udp = payload[0] << 8 | payload[1];
             begin = true;
         }
         gettimeofday(&high_end, NULL);
+        last_high_udp = payload[0] << 8 | payload[1];
     }
-    LOG("First high udp packet received: %d\n", first_udp);
-    LOG("Last high udp packet received: %d\n", last_udp);
+
+    LOG("First high udp id: %d\n", first_high_udp);
+    LOG("Last high udp id: %d\n", last_high_udp);
     LOGP("Second train received.\n");
 
     // compression detection calculations
@@ -154,9 +166,16 @@ char* probing(struct server_config *configs)
         result = "No compression detected.";
     }
 
+    // free memory
     free(my_addr);
     free(recv_addr);
     free(payload);
+
+    // close socket
+    if (close(udp_sock) < 0) {
+        perror("Error closing udp socket");
+        return NULL;
+    }
 
     return result;
 }
@@ -164,32 +183,32 @@ char* probing(struct server_config *configs)
 int post_probing(uint16_t listen_port, char *msg)
 {
     // bind port and accept client connection
-    int sock;
-    if ((sock = create_tcp_socket()) < 0) {
+    int tcp_sock;
+    if ((tcp_sock = create_tcp_socket()) < 0) {
         return -1;
     }
 
-    if (bind_and_listen(sock, listen_port) < 0) {
+    if (bind_and_listen(tcp_sock, listen_port) < 0) {
         return -1;
     }
 
-    int new_sock;
-    if ((new_sock = accept_connection(sock)) < 0) {
+    int client_sock;
+    if ((client_sock = accept_connection(tcp_sock)) < 0) {
         return -1;
     }
 
     // send compression results
-    if (send_stream(new_sock, msg) < 0) {
+    if (send_stream(client_sock, msg) < 0) {
         return -1;
     }
 
     LOGP("Compression status sent, closing TCP connection.\n");
-    if (close(sock) < 0) {
-        perror("Error closing socket");
+    if (close(tcp_sock) < 0) {
+        perror("Error closing tcp socket");
         return -1;
     }
-    if (close(new_sock) < 0) {
-        perror("Error closing socket");
+    if (close(client_sock) < 0) {
+        perror("Error closing client socket");
         return -1;
     }
 
