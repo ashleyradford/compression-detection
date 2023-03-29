@@ -1,3 +1,9 @@
+/**
+ * @file
+ *
+ * 
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -37,8 +43,10 @@ struct config {
 
 struct thread_data {
     int sockfd;
+    int rst_timeout;
+    int threshold;
     struct sockaddr_in *recv_addr;
-    double result;
+    char* result;
 };
 
 void parse_config(struct config *configs, char *contents)
@@ -72,11 +80,14 @@ void* receive_routine(void *arg)
     bool high_e_train = false;
     char* buf;
 
-    while(1) {
+    struct timeval beg, curr;
+    gettimeofday(&beg, NULL);
+    gettimeofday(&curr, NULL);
+
+    while(time_diff_sec(curr, beg) <= tdata->rst_timeout) {
         buf = receive_packet(tdata->sockfd, tdata->recv_addr);
         if (buf == NULL) {
-            // what to do here
-            exit(-1);
+            return NULL;
         }
 
         // check if we received RST packet
@@ -100,12 +111,29 @@ void* receive_routine(void *arg)
                     break;
                 }
             }
-        }        
+            // reset timeout clock
+            gettimeofday(&beg, NULL);
+        }
+        // set curr time
+        gettimeofday(&curr, NULL);
     }
 
-    double low_delta = time_diff(low_e_tail, low_e_head);
-    double high_delta = time_diff(high_e_tail, high_e_head);
-    tdata->result = high_delta - low_delta;
+    // check if loop timed out
+    if (time_diff_sec(curr, beg) > tdata->rst_timeout) {
+        LOGP("Receive timed out.\n");
+        tdata->result = "Failed to detect due to insufficient information.";
+    } else {
+        double low_delta = time_diff_milli(low_e_tail, low_e_head);
+        double high_delta = time_diff_milli(high_e_tail, high_e_head);
+        double delta = high_delta - low_delta;
+
+        LOG("Delta result: %.0fms\n", delta);
+        if (delta > tdata->threshold) {
+            tdata->result = "Compression detected.";
+        } else {
+            tdata->result = "No compression detected.";
+        }
+    }
 
     free(buf);
 
@@ -172,7 +200,7 @@ int send_high_entropy_train(int raw_sock, char *head_syn_packet, struct sockaddr
 
     // send tail SYN packet
     // print_packet(tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN);
-    send_packet(raw_sock, tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN, tail_serv_addr);
+    // send_packet(raw_sock, tail_syn_packet, IP4_HDRLEN + TCP_HDRLEN, tail_serv_addr);
     LOGP("High entropy tail syn sent.\n");
 
     return 1;
@@ -219,19 +247,19 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    // addr struct for tcp server port
+    // addr struct for server head tcp port
     struct sockaddr_in *head_serv_addr;
     if ((head_serv_addr = set_addr_struct(configs->server_ip, configs->tcp_head_dest)) == NULL) {
         return EXIT_FAILURE;
     }
 
-    // addr struct for udp server port
+    // addr struct for server udp port
     struct sockaddr_in *udp_serv_addr; 
     if ((udp_serv_addr = set_addr_struct(configs->server_ip, configs->udp_dest_port)) == NULL) {
         return EXIT_FAILURE;
     }
 
-    // addr struct for tcp server port
+    // addr struct for server tail tcp port
     struct sockaddr_in *tail_serv_addr;
     if ((tail_serv_addr = set_addr_struct(configs->server_ip, configs->tcp_tail_dest)) == NULL) {
         return EXIT_FAILURE;
@@ -280,6 +308,8 @@ int main(int argc, char *argv[])
     // set up thread data
     struct thread_data *tdata = malloc(sizeof(struct thread_data));
     tdata->sockfd = raw_sock;
+    tdata->rst_timeout = configs->rst_timeout;
+    tdata->threshold = configs->threshold;
     struct sockaddr_in *recv_addr = malloc(sizeof(struct sockaddr));
     memset(recv_addr, 0, sizeof(struct sockaddr));
     tdata->recv_addr = recv_addr;
@@ -317,12 +347,8 @@ int main(int argc, char *argv[])
     //     return EXIT_FAILURE;
     // }
 
-    LOG("Delta result: %.0fms\n", tdata->result);
-    if (tdata->result > configs->threshold) {
-        printf("Compression detected.\n");
-    } else {
-        printf("No compression detected.\n");
-    }
+    // print result
+    printf("%s\n", tdata->result);
 
     // free memory
     free(configs);

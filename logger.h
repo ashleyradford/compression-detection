@@ -1,4 +1,10 @@
-/* Source Matthew Malensek: https://www.cs.usfca.edu/~mmalensek/cs326/schedule/code/week04/debug.c.html */
+/**
+ * @file
+ *
+ * Defines logger functions for DEBUG flag
+ *
+ * Source Matthew Malensek: https://www.cs.usfca.edu/~mmalensek/cs326/schedule/code/week04/debug.c.html
+ */
 
 #ifndef DEBUG
 #define DEBUG 0

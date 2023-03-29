@@ -1,5 +1,11 @@
-#include <stdlib.h>
+/**
+ * @file
+ *
+ * 
+ */
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -135,7 +141,7 @@ char* create_syn_packet(struct sockaddr_in *src_addr, struct sockaddr_in *dst_ad
 
     // pseudo header + tcp header + data = checksum
     int psize = sizeof(struct pseudo_header) + sizeof(struct tcphdr);
-    
+
     // fill pseudo packet
     char* pseudogram = malloc(psize);
     if (pseudogram == NULL) {

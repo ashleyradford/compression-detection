@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -g -D DEBUG=1 -lpthread
+CFLAGS = -Wall -g -D DEBUG=0 -lpthread
 target = bin
 inter = obj
 

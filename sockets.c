@@ -1,5 +1,11 @@
-#include <stdlib.h>
+/**
+ * @file
+ *
+ * 
+ */
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
@@ -120,7 +126,7 @@ int establish_connection(int sockfd, char* server_ip, uint16_t server_port)
             perror("Error converting IP address");
             return -1;
     }
-    
+
     // connecting to server
     if (connect(sockfd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
         perror("Error connecting to server");
@@ -180,7 +186,7 @@ int send_stream(int sockfd, char *msg)
         perror("Error sending message");
         return -1;
     }
-    
+
     return 1;
 }
 
@@ -238,7 +244,7 @@ int send_packet(int sockfd, char *packet, int packet_size, struct sockaddr_in *s
     }
 
     // LOG("Packet sent to %d.\n", ntohs(sin->sin_port));
-    
+
     return 1;
 }
 

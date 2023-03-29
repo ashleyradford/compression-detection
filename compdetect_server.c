@@ -1,9 +1,16 @@
+/**
+ * @file
+ *
+ * 
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+
 #include <sys/time.h>
 #include <netinet/in.h>
 
@@ -152,8 +159,8 @@ char* probing(struct server_config *configs)
 
     // compression detection calculations
     char *result;
-    double low_delta = time_diff(low_end, low_start);
-    double high_delta = time_diff(high_end, high_start);
+    double low_delta = time_diff_milli(low_end, low_start);
+    double high_delta = time_diff_milli(high_end, high_start);
     double difference = high_delta - low_delta;
 
     LOG("Low entropy: %.0fms\n", low_delta);

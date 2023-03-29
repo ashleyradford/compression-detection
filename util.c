@@ -1,5 +1,11 @@
-#include <stdlib.h>
+/**
+ * @file
+ *
+ * 
+ */
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -71,11 +77,18 @@ char* create_high_entropy_payload(int id, int payload_size)
     return payload;
 }
 
-double time_diff(struct timeval tv1, struct timeval tv2)
+double time_diff_milli(struct timeval tv1, struct timeval tv2)
 {
     double tv1_mili = (tv1.tv_sec * 1000) + (tv1.tv_usec / 1000);
     double tv2_mili = (tv2.tv_sec * 1000) + (tv2.tv_usec / 1000);
     return tv1_mili - tv2_mili;
+}
+
+double time_diff_sec(struct timeval tv1, struct timeval tv2)
+{
+    double tv1_sec = tv1.tv_sec + (tv1.tv_usec / 1000000);
+    double tv2_sec = tv2.tv_sec + (tv2.tv_usec / 1000000);
+    return tv1_sec - tv2_sec;
 }
 
 void print_packet(char* packet, int size)
