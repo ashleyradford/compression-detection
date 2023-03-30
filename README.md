@@ -1,5 +1,4 @@
 # Compression Detection
-
 Based on the techniques described in [End-to-End Detection of Compression of Traffic Flows by Intermediaries](https://www.cs.usfca.edu/vahab/resources/compression_detection.pdf) by Vahab Pournaghshband, Alexander Afanasyev, and Peter Reiher.
 
 ## Requirements
@@ -49,9 +48,9 @@ sudo ./bin/compdetect port
 ## Design Decisions
 **Client TCP source port:** in the client and server application, the OS decides on the TCP port for the client's TCP connection request. All other ports are decided by what is defined in the configuration file.
 
-**Compression detection:** when checking for compression using the delta times for low and high entropy trains, the server only checks if the *high entropy delta - low entropy delta > threshold*. The absolute value is not considered here because if the low entropy time is greater than the high entropy time, then there must not be compression anyways.
+**Compression detection:** when checking for compression using the delta times for low and high entropy trains, the server only checks if the *high entropy delta - low entropy delta > threshold*. The absolute value is not considered here because if the low entropy time is greater than the high entropy time then there must not be compression anyways.
 
-**Receiving UDP packets:** when receiving UDP packets in the client and server application, the server does not currently check what percentage or range of UDP packets it has received. It is able to parse the UDP packet ids, however, after receiving the packets the server moves on to the compression calculations. This may not be optimal in the cases where only a small range of UDP packets were received. For example, if we only received packets 1000 - 2000 for the low entropy but packets 1000 - 6000 for the high entropy packets, this will not be an accurate comparison of delta times.
+**Receiving UDP packets:** when receiving UDP packets in the client and server application, the server does not check what percentage or range of UDP packets it received. The server is able to parse the UDP packet ids, however, after receiving them, the server simply moves on to the compression calculations. This may not be optimal in cases where only a small range of UDP packets are received. For example, if we only received packets 1000 - 2000 from the low entropy train and packets 1000 - 6000 from the high entropy train this will not be an accurate comparison of delta times.
 
 **Receiving RST packets:** when receiving RST packets in the standalone application, we are assuming that the head and tail RST packets arrive in order and thus we are not checking the port numbers of the packets. It would be better design to check the port numbers in case of delayed responses.
 
