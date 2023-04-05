@@ -28,6 +28,8 @@ make standalone   # builds the standalone application
 make              # builds server, client, and standalone applications
 ```
 
+**Note:** to turn on logs, edit the Makefile by setting the `DEBUG` flag to 1.
+
 ## Run
 To run the cooperative compression detection, the server must first be up and running the *compdetect_server* program:
 ```
