@@ -44,7 +44,7 @@ To run the client side:
 
 To run the standalone application (must have system admin permissions):
 ```
-sudo ./bin/compdetect port
+sudo ./bin/compdetect myconfigs.json
 ```
 
 ## Design Decisions

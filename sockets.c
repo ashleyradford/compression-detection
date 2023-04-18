@@ -106,7 +106,7 @@ int add_timeout_opt(int sockfd, int wait_time)
 int set_df_opt(int sockfd)
 {
     int df = IP_PMTUDISC_DO; // sets DF bit
-    if (setsockopt(sockfd, SOL_SOCKET, IP_MTU_DISCOVER, &df, sizeof df) == -1) {
+    if (setsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER, &df, sizeof df) == -1) {
         perror("Cannot set MTU discovery");
         return -1;
     }
@@ -124,7 +124,7 @@ int set_df_opt(int sockfd)
  */
 int add_ttl_opt(int sockfd, int ttl)
 {
-    if (setsockopt(sockfd, SOL_SOCKET, IP_TTL, &ttl, sizeof ttl) == -1) {
+    if (setsockopt(sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof ttl) == -1) {
         perror("Cannot set TTL");
         return -1;
     }
